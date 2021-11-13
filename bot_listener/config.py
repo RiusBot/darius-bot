@@ -21,8 +21,8 @@ def configure_logging():
         # format="[%(asctime)s] [%(process)s] [%(levelname)s] [%(module)s]: #%(funcName)s @%(lineno)d: %(message)s",
     )
     logging.info(f"Logging level: {logging_level}")
-    
-    
+
+
 def read_config():
     yaml_file_path = os.path.join(os.path.dirname(__file__), "../config.yaml")
     with open(yaml_file_path) as yaml_file:

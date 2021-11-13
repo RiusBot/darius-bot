@@ -1,12 +1,11 @@
 import logging
 import json
-import socket
 import traceback
 from flask import Flask, request, jsonify, Response
 
-from rob_worker.config import configure_logging
-from rob_worker.services import validators
-from rob_worker.services.rush import rush
+from bot_executor.config import configure_logging
+from bot_executor.services import validators
+from bot_executor.services.execute import order_execute
 
 
 configure_logging()
@@ -36,7 +35,7 @@ def main():
         return jsonify(order), 200
     except Exception as e:
         logging.exception("")
-        # traceback.format_exc()
+        traceback.format_exc()
         return jsonify({"error_message": str(e)}), 500
 
 

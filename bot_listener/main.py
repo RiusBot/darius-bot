@@ -1,10 +1,10 @@
+import json
 import parse
 import logging
 import requests
-import asyncio
+# import asyncio
 from config import config
 from telethon import TelegramClient, events
-
 
 
 telegram_client = TelegramClient('darius-bot-listener', config["telegram_api_id"], config["telegram_api_hash"])
@@ -41,14 +41,14 @@ async def send_to_execute(info: dict):
     logging.info(str(response))
     try:
         logging.info(json.dumps(response.json()))
-    except:
-         logging.info(response.text)
+    except Exception:
+        logging.info(response.text)
 
 
 with telegram_client:
     telegram_client.loop.run_until_complete(get_IDs())
     telegram_client.loop.run_until_complete(get_channels())
-    
+
 
 @telegram_client.on(events.NewMessage(from_users=test_channel, forwards=False))
 async def test_handler(event):

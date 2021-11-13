@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 
 class BaseParser(ABC):
-    
+
     def parse(self, event):
         try:
             channel = event.chat.title
@@ -27,8 +27,8 @@ class BaseParser(ABC):
 
     @abstractmethod
     def parse_symbol(self):
-        raise NotImplmentedError
-        
+        raise NotImplementedError
+
     @abstractmethod
     def parse_action(self):
-        raise NotImplmentedError
+        raise NotImplementedError
