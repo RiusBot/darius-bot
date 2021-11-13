@@ -43,16 +43,6 @@ async def send_to_execute(info: dict):
         logging.info(json.dumps(response.json()))
     except:
          logging.info(response.text)
-            
-            
-async def record_message(info: dict):
-    logging.info("Record message")
-    response = requests.post(config["backend_endpoint"], json=info)
-    logging.info(str(response))
-    try:
-        logging.info(json.dumps(response.json()))
-    except:
-         logging.info(response.text)
 
 
 with telegram_client:
@@ -65,8 +55,7 @@ async def test_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.RoseParser.parse(event)
     logging.info(json.dumps(info, indent=4))
-    # await record_message(info)
-    
+
 
 @telegram_client.on(events.NewMessage(from_users=rose_channel, forwards=False))
 async def rose_handler(event):
@@ -74,18 +63,16 @@ async def rose_handler(event):
     info = parse.RoseParser.parse(event)
     logging.info(json.dumps(info, indent=4))
     # await send_to_execute(info)
-    # await record_message(info)
-    
-    
+
+
 @telegram_client.on(events.NewMessage(from_users=perpetual_channel, forwards=False))
 async def perpetual_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.PerpetualParser.parse(event)
     logging.info(json.dumps(info, indent=4))
     # await send_to_execute(info)
-    # await record_message(info)
 
-    
+
 if __name__ == '__main__':
     while True:
         try:

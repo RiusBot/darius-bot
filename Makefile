@@ -112,3 +112,50 @@ version:
 
 start-listener-local:
 	python bot-listener/main.py
+
+
+###########################
+# Build & Deploy
+###########################
+
+ENV ?= $(firstword $(MAKECMDGOALS))
+ifeq ($(ENV), prod)
+	CLOUDBUILD = cloudbuild-prod.yml
+	PROJECT_ID = darius
+	APP = app-prod.yml
+else
+	CLOUDBUILD = cloudbuild-dev.yml
+	PROJECT_ID = darius
+	APP = app-dev.yml
+	WORKER_URL = ''
+endif
+
+ifeq ($(words $(MAKECMDGOALS)), 1)
+prod: build deploy
+dev: build deploy
+pilot: build deploy
+else
+dev: nan
+pilot: nan
+prod: nan
+nan:
+	@:
+endif
+
+set-project:
+	gcloud config set project $(PROJECT_ID)
+
+build-bot-executor:
+	gcloud builds submit --config bot_executor/$(CLOUDBUILD)
+
+deploy-bot-executor:
+	gcloud beta run deploy bot-executor \
+			--image gcr.io/$(PROJECT_ID)/bot-executor \
+			--region us-central1 \
+			--platform managed \
+			--cpu 1 \
+			--concurrency 1 \
+			--timeout 60m \
+			--memory 1Gi \
+			--max-instances 1 \
+			--update-env-vars='project_id=$(PROJECT_ID)'
