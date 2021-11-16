@@ -3,8 +3,8 @@ steps:
 - name: "gcr.io/cloud-builders/docker"
   args:
   - build
-  - "--tag=gcr.io/darius/bot-executor"
+  - "--tag=gcr.io/darius-332003/bot-executor"
   - "--file=./bot_executor/Dockerfile"
   - .
 images:
-- "gcr.io/darius/bot-executor"
+- "gcr.io/darius-332003/bot-executor"

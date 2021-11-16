@@ -1,7 +1,7 @@
 FROM python:3.8-slim-buster
 
 # System packages installation
-RUN apt-get update -y
+RUN apt update -y
 RUN apt install -y \
     apt-utils \
     curl \

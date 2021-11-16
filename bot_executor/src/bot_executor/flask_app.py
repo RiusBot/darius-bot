@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify, Response
 from bot_executor.config import configure_logging
 from bot_executor.services import validators
 from bot_executor.services.execute import order_execute
+from bot_executor.services.auth import authenticate
 
 
 configure_logging()
@@ -31,6 +32,9 @@ def health_check():
 def main():
     order_info = request.get_json()
     try:
+        if authenticate(order_info) is False:
+            raise Exception("access token is not valid")
+        
         logging.info("Order info:")
         logging.info(json.dumps(order_info, indent=4))
         order = order_execute(order_info)

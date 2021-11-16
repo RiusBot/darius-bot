@@ -5,12 +5,12 @@
 ENV ?= $(firstword $(MAKECMDGOALS))
 ifeq ($(ENV), prod)
 	CLOUDBUILD = cloudbuild-prod.yml
-	PROJECT_ID = darius
+	PROJECT_ID = darius-332003
 	APP = app-prod.yml
 else
 	CREDENTIAL = darius-332003-6391a8358dec.json
 	CLOUDBUILD = cloudbuild-dev.yml
-	PROJECT_ID = darius
+	PROJECT_ID = darius-332003
 	APP = app-dev.yml
 	WORKER_URL = ''
 endif
@@ -165,11 +165,11 @@ build-bot-executor:
 deploy-bot-executor:
 	gcloud beta run deploy bot-executor \
 			--image gcr.io/$(PROJECT_ID)/bot-executor \
-			--region us-central1 \
+			--region asia-east1 \
 			--platform managed \
 			--cpu 1 \
 			--concurrency 1 \
-			--timeout 60m \
+			--timeout 2m \
 			--memory 1Gi \
 			--max-instances 1 \
 			--update-env-vars='project_id=$(PROJECT_ID)'
