@@ -4,12 +4,24 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+bot_executor = {path = "./bot_executor/src", editable = true}
 Telethon = "*"
 PyYAML = "*"
 SQLAlchemy = "*"
 requests = "*"
 
 [dev-packages]
+"testfixtures" = "*"
+# black = "*"
+"flake8" = "*"
+colorama = "*"
+gunicorn = "*"
+pipdeptree = "*"
+pytest = '*'
+pytest-cov = '*'
+pytest-mock = '*'
+pytest-custom-exit-code = '*'
+
 
 [requires]
 python_version = "3.7"

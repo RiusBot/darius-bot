@@ -1,4 +1,34 @@
 ###########################
+# Environment
+###########################
+
+ENV ?= $(firstword $(MAKECMDGOALS))
+ifeq ($(ENV), prod)
+	CLOUDBUILD = cloudbuild-prod.yml
+	PROJECT_ID = darius
+	APP = app-prod.yml
+else
+	CREDENTIAL = darius-332003-6391a8358dec.json
+	CLOUDBUILD = cloudbuild-dev.yml
+	PROJECT_ID = darius
+	APP = app-dev.yml
+	WORKER_URL = ''
+endif
+
+ifeq ($(words $(MAKECMDGOALS)), 1)
+prod: build deploy
+dev: build deploy
+pilot: build deploy
+else
+dev: nan
+pilot: nan
+prod: nan
+nan:
+	@:
+endif
+
+
+###########################
 # General
 ###########################
 
@@ -111,36 +141,20 @@ version:
 ###########################
 
 start-listener-local:
-	python bot-listener/main.py
+	python bot_listener/main.py
+    
+start-executor-local:
+	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=$(PROJECT_ID) gunicorn bot_executor.flask_app:app \
+			--bind :8000 \
+			--workers 1 \
+			--threads 1 \
+			--timeout 900
+
 
 
 ###########################
 # Build & Deploy
 ###########################
-
-ENV ?= $(firstword $(MAKECMDGOALS))
-ifeq ($(ENV), prod)
-	CLOUDBUILD = cloudbuild-prod.yml
-	PROJECT_ID = darius
-	APP = app-prod.yml
-else
-	CLOUDBUILD = cloudbuild-dev.yml
-	PROJECT_ID = darius
-	APP = app-dev.yml
-	WORKER_URL = ''
-endif
-
-ifeq ($(words $(MAKECMDGOALS)), 1)
-prod: build deploy
-dev: build deploy
-pilot: build deploy
-else
-dev: nan
-pilot: nan
-prod: nan
-nan:
-	@:
-endif
 
 set-project:
 	gcloud config set project $(PROJECT_ID)

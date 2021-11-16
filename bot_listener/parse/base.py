@@ -9,8 +9,8 @@ class BaseParser(ABC):
         try:
             channel = event.chat.title
             content = event.text
-            message_timestamp = event.date
-            recieve_timestamp = datetime.datetime.now()
+            message_timestamp = event.date.timestamp()
+            recieve_timestamp = datetime.datetime.now().timestamp()
             symbol = self.parse_symbol(event.text)
             action = self.parse_action(event.text)
             return {

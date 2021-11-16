@@ -31,8 +31,10 @@ def health_check():
 def main():
     order_info = request.get_json()
     try:
+        logging.info("Order info:")
+        logging.info(json.dumps(order_info, indent=4))
         order = order_execute(order_info)
-        return jsonify(order), 200
+        return jsonify(order_info), 200
     except Exception as e:
         logging.exception("")
         traceback.format_exc()

@@ -29,7 +29,15 @@ def validate_dict_fields(fields, json_payload, errors):
         if field not in json_payload.keys():
             continue
         if not isinstance(json_payload.get(field), dict):
-            errors.append(f"'{field}' must be a number")
+            errors.append(f"'{field}' must be a dict")
+            
+            
+def validate_bool_fields(fields, json_payload, errors):
+    for field in fields:
+        if field not in json_payload.keys():
+            continue
+        if not isinstance(json_payload.get(field), bool):
+            errors.append(f"'{field}' must be bool")
 
 
 def apply_fields_validators(data, mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields):
@@ -38,7 +46,17 @@ def apply_fields_validators(data, mandatory_fields, string_fields, numeric_field
     validate_string_fields(string_fields, data, errors)
     validate_numeric_fields(numeric_fields, data, errors)
     validate_dict_fields(dict_fields, data, errors)
-    validate_dict_fields(bool_fields, data, errors)
+    validate_bool_fields(bool_fields, data, errors)
+    return errors
+
+
+def apply_enum_validators(data, enum_map: dict):
+    errors = list()
+    for key, enum_value in enum_map.items():
+        if key in data:
+            value = data[key]
+            if data[key] not in enum_value:
+                errors.append(f"'{key}' must be in {enum_value} but got '{value}'")
     return errors
 
 
@@ -50,6 +68,7 @@ def main_validator(f):
             "symbol",
             "action",
             "test",
+            "target",
             "quantity",
             "price",
             "leverage",
@@ -58,14 +77,24 @@ def main_validator(f):
             "take_profit_type",
             "margin",
             "duplicate",
+            "api_key",
+            "api_secret"
         ]
-        string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type"]
+        string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
         numeric_fields = ["quantity", "price", "leverage", "margin"]
         dict_fields = []
         bool_fields = ["test", "duplicate"]
+        enums = {
+            "target": {"SPOT", "MARGIN", "FUTURE"},
+            "order_type": {"LIMIT", "MARKET"},
+            "stop_loss_type": {"LIMIT", "MARKET"},
+            "take_profit_type": {"LIMIT", "MARKET"},
+            "exchange": {"binance", "ftx"}
+        }
         data = request.get_json()
 
         errors = apply_fields_validators(data, mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields)
+        errors += apply_enum_validators(data, enums)
 
         if errors:
             return jsonify({"error_messages": errors}), 400

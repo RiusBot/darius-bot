@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Tuple
 
 
-class FTXClient():
+class FtxClient():
 
     def __init__(self, config: dict):
         self.config = config
@@ -31,7 +31,7 @@ class FTXClient():
                 'FTX-SUBACCOUNT': self.subaccount
             }
             logging.info(f"headers: {headers}")
-        self.exchange = getattr(ccxt, config["exchange_setting"]["exchange"])({
+        self.exchange = ccxt.ftx({
             "enableRateLimit": True,
             "apiKey": config["api_key"],
             "secret": config["api_secret"],
@@ -46,7 +46,13 @@ class FTXClient():
             raise e
 
         self.markets = self.exchange.loadMarkets(True)
-
+    
+    def make_symbol(self, symbol: str):
+        if self.target == "SPOT":
+            return f"{symbol}/USD"
+        elif self.target == "FUTURE":
+            return f"{symbol}-PERP"
+    
     def get_volume(self, symbol: str) -> float:
         try:
             self.exchange.loadMarkets(True)
@@ -255,7 +261,7 @@ class FTXClient():
             amount = float(asset.get(token, 0))
             price = self.get_price(symbol)
             notional = amount * price
-            if notional > 1:
+            if notional > 10:
                 logging.info(f"{symbol} has {notional} notional.")
                 raise Exception("Position duplicate")
         elif self.target == "FUTURE":
@@ -298,7 +304,7 @@ class FTXClient():
 
     def make_order(self, order_info: dict):
         logging.info("Start making order.")
-        symbol = order_info["symbol"]
+        symbol = self.make_symbol(order_info["symbol"])
         action = order_info["action"]
         logging.info(f"Symbol: {symbol}, Action: {action}")
         self.validate_order(symbol, action)
@@ -317,9 +323,10 @@ class FTXClient():
         return open_order
 
     def make_oco_order(self, open_order: dict, order_info: dict):
+        logging.info("Start making OCO order.")
         sl_order = None
         tp_order = None
-        symbol = order_info["symbol"]
+        symbol = self.make_symbol(order_info["symbol"])
         action = order_info["action"]
         stop_loss = order_info.get("stop_loss")
         take_profit = order_info.get("take_profit")

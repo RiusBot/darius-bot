@@ -53,14 +53,14 @@ with telegram_client:
 @telegram_client.on(events.NewMessage(from_users=test_channel, forwards=False))
 async def test_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
-    info = parse.RoseParser.parse(event)
+    info = parse.RoseParser().parse(event)
     logging.info(json.dumps(info, indent=4))
 
 
 @telegram_client.on(events.NewMessage(from_users=rose_channel, forwards=False))
 async def rose_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
-    info = parse.RoseParser.parse(event)
+    info = parse.RoseParser().parse(event)
     logging.info(json.dumps(info, indent=4))
     # await send_to_execute(info)
 
@@ -68,7 +68,7 @@ async def rose_handler(event):
 @telegram_client.on(events.NewMessage(from_users=perpetual_channel, forwards=False))
 async def perpetual_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
-    info = parse.PerpetualParser.parse(event)
+    info = parse.PerpetualParser().parse(event)
     logging.info(json.dumps(info, indent=4))
     # await send_to_execute(info)
 

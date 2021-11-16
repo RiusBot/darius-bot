@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="darius_bot_executor",
+    name="bot_executor",
     version="1.0",
     author="Yunda Tsai",
     author_email="bb04902103@gmail.com",
