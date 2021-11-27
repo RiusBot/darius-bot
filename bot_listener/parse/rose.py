@@ -1,3 +1,4 @@
+import re
 import json
 import base64
 import logging
@@ -29,4 +30,7 @@ class RoseParser(BaseParser):
     def parse_action(self, message: str):
         pro_message = self.decode(message)
         if pro_message:
-            return pro_message.get("action")
+            action = pro_message.get("action")
+            if isinstance(action, str):
+                action = action.upper()
+            return action

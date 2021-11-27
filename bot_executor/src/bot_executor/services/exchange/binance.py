@@ -53,6 +53,7 @@ class BinanceClient():
 
     def get_price(self, symbol: str) -> float:
         self.exchange.loadMarkets(True)
+        symbol = symbol.replace("/", "")
         return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"])
 
     def get_balance(self):
@@ -163,6 +164,7 @@ class BinanceClient():
                 symbol,
                 type=tp_order_type,
                 side="SELL",
+                price=tp_price,
                 amount=amount,
                 params={
                     "stopPrice": tp_price,
@@ -175,6 +177,7 @@ class BinanceClient():
                 type=sl_order_type,
                 side="SELL",
                 amount=amount,
+                price=sl_price,
                 params={
                     "stopPrice": sl_price,
                     "closePosition": True,
@@ -312,7 +315,7 @@ class BinanceClient():
         self.validate_symbol(symbol)
         self.validate_action(action)
 
-        if self.target != "SPOT":
+        if self.target != "SPOT" and self.margin:
             self.validate_margin(symbol)
 
         if action == "sell" and self.target != "FUTURE":

@@ -70,12 +70,10 @@ def main_validator(f):
             "test",
             "target",
             "quantity",
-            "price",
             "leverage",
             "order_type",
             "stop_loss_type",
             "take_profit_type",
-            "margin",
             "duplicate",
             "api_key",
             "api_secret"
