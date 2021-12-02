@@ -141,7 +141,7 @@ version:
 ###########################
 
 start-listener-local:
-	python bot_listener/main.py
+	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=$(PROJECT_ID) python bot_listener/main.py
     
 start-executor-local:
 	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=$(PROJECT_ID) gunicorn bot_executor.flask_app:app \

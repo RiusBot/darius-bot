@@ -5,6 +5,7 @@ import requests
 # import asyncio
 from config import config
 from telethon import TelegramClient, events
+from .auth import fetch_secret_token_manager
 
 
 telegram_client = TelegramClient('darius-bot-listener', config["telegram_api_id"], config["telegram_api_hash"])
@@ -37,6 +38,7 @@ async def get_IDs():
 
 async def send_to_execute(info: dict):
     logging.info("send to execute")
+    info["token"] = fetch_secret_token_manager()
     response = requests.post(config["execute_endpoint"], json=info)
     logging.info(str(response))
     try:
