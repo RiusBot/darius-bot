@@ -91,6 +91,8 @@ class FtxClient():
             Amount : {amount}
         """)
         order = self.exchange.createMarketBuyOrder(symbol, amount)
+        if order["price"] is None:
+            order["price"] = price
         logging.info(f"Open average price : {order['average']}")
         return order
 
@@ -131,9 +133,14 @@ class FtxClient():
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float):
+        price = open_order["price"]
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
-        price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
+        if open_order.get("average") is not None:
+            price = float(open_order["average"])
+        elif open_order.get("price") is not None:
+            price = float(open_order["price"])
+
         tp_price = price * (1 + take_profit)
         sl_price = price * (1 - stop_loss)
         tp_order = None
@@ -177,9 +184,14 @@ class FtxClient():
         return tp_order, sl_order
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float):
+        price = open_order["price"]
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
-        price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
+        if open_order.get("average") is not None:
+            price = float(open_order["average"])
+        elif open_order.get("price") is not None:
+            price = float(open_order["price"])
+
         tp_price = price * (1 - take_profit)
         sl_price = price * (1 + stop_loss)
         tp_order = None

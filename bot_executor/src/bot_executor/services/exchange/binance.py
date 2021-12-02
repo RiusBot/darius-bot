@@ -46,6 +46,7 @@ class BinanceClient():
     
     def get_volume(self, symbol: str) -> float:
         try:
+            symbol = symbol.replace("/", "")
             return float(self.exchange.fapiPublic_get_ticker_24hr({'symbol': symbol})["volume"])
         except Exception:
             logging.excpetion("")
@@ -168,7 +169,7 @@ class BinanceClient():
                 amount=amount,
                 params={
                     "stopPrice": tp_price,
-                    "closePosition": True,
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
                     "priceProtect": True
                 }
             )
@@ -180,7 +181,7 @@ class BinanceClient():
                 price=sl_price,
                 params={
                     "stopPrice": sl_price,
-                    "closePosition": True,
+                    "closePosition": (sl_order_type=="STOP_MARKET"),
                     "priceProtect": True
                 }
             )
@@ -217,6 +218,8 @@ class BinanceClient():
         sl_price = price * (1 + stop_loss)
         tp_order = None
         sl_order = None
+        tp_order_type = "TAKE_PROFIT" if self.take_profit_type == "LIMIT" else "TAKE_PROFIT_MARKET"
+        sl_order_type = "STOP" if self.stop_loss_type == "LIMIT" else "STOP_MARKET"
         logging.info(f"""
             Create OCO short order
             Amount: {amount},
@@ -228,23 +231,23 @@ class BinanceClient():
         if self.target == "FUTURE":
             tp_order = self.exchange.create_order(
                 symbol,
-                type="TAKE_PROFIT_MARKET",
+                type=tp_order_type,
                 side="BUY",
                 amount=amount,
                 params={
                     "stopPrice": tp_price,
-                    "closePosition": True,
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
                     "priceProtect": True
                 }
             )
             sl_order = self.exchange.create_order(
                 symbol,
-                type="STOP_MARKET",
+                type=sl_order_type,
                 side="BUY",
                 amount=amount,
                 params={
                     "stopPrice": sl_price,
-                    "closePosition": True,
+                    "closePosition": (sl_order_type=="STOP_MARKET"),
                     "priceProtect": True
                 }
             )
