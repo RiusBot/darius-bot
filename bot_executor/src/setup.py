@@ -15,5 +15,7 @@ setup(
         "requests",
         "ccxt",
         "python-dateutil",
+        "google-cloud-secret-manager==2.8.0",
+        "firebase_admin==4.4.0"
     ]
 )

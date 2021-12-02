@@ -2,3 +2,5 @@ telethon
 pyyaml
 sqlalchemy
 requests
+firebase_admin==4.4.0
+google-cloud-secret-manager==2.8.0
