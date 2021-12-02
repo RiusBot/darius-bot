@@ -76,10 +76,14 @@ def main_validator(f):
             "take_profit_type",
             "duplicate",
             "api_key",
-            "api_secret"
+            "api_secret",
+            "scalp_entry",
+            "scalp_stop_loss",
+            "scalp_take_profit",
+            "price",
         ]
         string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
-        numeric_fields = ["quantity", "price", "leverage", "margin"]
+        numeric_fields = ["quantity", "leverage"]
         dict_fields = []
         bool_fields = ["test", "duplicate"]
         enums = {

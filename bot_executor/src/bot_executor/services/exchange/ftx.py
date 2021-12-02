@@ -132,7 +132,7 @@ class FtxClient():
         order["average"] = order.get("price", price)
         return order
 
-    def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float):
+    def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
         price = open_order["price"]
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
@@ -140,9 +140,11 @@ class FtxClient():
             price = float(open_order["average"])
         elif open_order.get("price") is not None:
             price = float(open_order["price"])
-
-        tp_price = price * (1 + take_profit)
-        sl_price = price * (1 - stop_loss)
+        
+        if tp_price is None:
+            tp_price = price * (1 + take_profit)
+        if sl_price is None:
+            sl_price = price * (1 - stop_loss)
         tp_order = None
         sl_order = None
         logging.info(f"""
@@ -183,7 +185,7 @@ class FtxClient():
 
         return tp_order, sl_order
 
-    def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float):
+    def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
         price = open_order["price"]
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
@@ -192,8 +194,10 @@ class FtxClient():
         elif open_order.get("price") is not None:
             price = float(open_order["price"])
 
-        tp_price = price * (1 - take_profit)
-        sl_price = price * (1 + stop_loss)
+        if tp_price is None:
+            tp_price = price * (1 - take_profit)
+        if sl_price is None:
+            sl_price = price * (1 + stop_loss)
         tp_order = None
         sl_order = None
         logging.info(f"""
@@ -298,7 +302,7 @@ class FtxClient():
         self.validate_symbol(symbol)
         self.validate_action(action)
 
-        if self.target != "SPOT":
+        if self.target != "SPOT" and self.margin:
             self.validate_margin(symbol)
 
         if action == "sell" and self.target != "FUTURE":
@@ -342,9 +346,11 @@ class FtxClient():
         action = order_info["action"]
         stop_loss = order_info.get("stop_loss")
         take_profit = order_info.get("take_profit")
-        if stop_loss and take_profit:
+        tp_price = order_info.get("scalp_take_profit")
+        sl_price = order_info.get("scalp_stop_loss")
+        if (stop_loss and take_profit) or (tp_price and sl_price):
             if action == "BUY":
-                tp_order, sl_order = self.create_oco_order(symbol, open_order, take_profit, stop_loss)
+                tp_order, sl_order = self.create_oco_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
             elif action == "SELL":
-                tp_order, sl_order = self.create_oco_short_order(symbol, open_order, take_profit, stop_loss)
+                tp_order, sl_order = self.create_oco_short_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
         return tp_order, sl_order
