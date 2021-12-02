@@ -11,9 +11,28 @@ class BaseParser(ABC):
             content = event.text
             message_timestamp = event.date.timestamp()
             recieve_timestamp = datetime.datetime.now().timestamp()
-            symbol = self.parse_symbol(event.text)
-            action = self.parse_action(event.text)
-            entry, stop_loss, take_profit, price = self.parse_price(event.text)
+
+            try:
+                symbol = self.parse_symbol(event.text)
+            except Exception:
+                symbol = None
+                logging.error("parse symbol error")
+                logging.exception("")
+
+            try:
+                action = self.parse_action(event.text)
+            except Exception:
+                action = None
+                logging.error("parse action error")
+                logging.exception("")
+
+            try:
+                entry, stop_loss, take_profit, price = self.parse_price(event.text)
+            except Exception:
+                entry, stop_loss, take_profit, price = None, None, None, None
+                logging.error("parse price error")
+                logging.exception("")
+
             return {
                 "channel": channel,
                 "content": content,

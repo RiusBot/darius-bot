@@ -15,10 +15,11 @@ test_channel = None
 sentiment_channel = None
 justin_channel = None
 whale_channel = None
+scalp_channel = None
 
 
 async def get_channels():
-    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel
+    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel
     logging.info("Get channel")
     test_channel = await telegram_client.get_entity('test')
     rose_channel = await telegram_client.get_entity('🌹 Rose Premium Signal For Bot')
@@ -26,7 +27,8 @@ async def get_channels():
     sentiment_channel = await telegram_client.get_entity('Sentiment Indicator Notification')
     justin_channel = await telegram_client.get_entity('https://t.me/justin_tw')
     whale_channel = await telegram_client.get_entity('whalehunter')
-    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel
+    scalp_channel = await telegram_client.get_entity('Daily Scalping Signal')
+    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel
 
 
 async def get_IDs():
@@ -37,6 +39,7 @@ async def get_IDs():
 
 
 async def send_to_execute(info: dict):
+    return
     logging.info("send to execute")
     info["token"] = fetch_secret_token_manager()
     response = requests.post(config["execute_endpoint"], json=info)
@@ -64,7 +67,7 @@ async def rose_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.RoseParser().parse(event)
     logging.info(json.dumps(info, indent=4))
-    # await send_to_execute(info)
+    await send_to_execute(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=perpetual_channel, forwards=False))
@@ -72,7 +75,23 @@ async def perpetual_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.PerpetualParser().parse(event)
     logging.info(json.dumps(info, indent=4))
-    # await send_to_execute(info)
+    await send_to_execute(info)
+
+
+@telegram_client.on(events.NewMessage(from_users=whale_channel, forwards=False))
+async def whale_handler(event):
+    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    info = parse.WhaleParser().parse(event)
+    logging.info(json.dumps(info, indent=4))
+    await send_to_execute(info)
+
+
+@telegram_client.on(events.NewMessage(from_users=scalp_channel, forwards=False))
+async def scalp_handler(event):
+    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    info = parse.ScalpParser().parse(event)
+    logging.info(json.dumps(info, indent=4))
+    await send_to_execute(info)
 
 
 if __name__ == '__main__':
