@@ -7,7 +7,7 @@ ifeq ($(ENV), prod)
 	CLOUDBUILD = cloudbuild-prod.yml
 	PROJECT_ID = darius-332003
 	APP = app-prod.yml
-else
+else ifeq ($(ENV), dev)
 	CREDENTIAL = darius-332003-6391a8358dec.json
 	CLOUDBUILD = cloudbuild-dev.yml
 	PROJECT_ID = darius-332003
@@ -70,17 +70,17 @@ install-env:
 			echo "eval \"\$$(pyenv init -)\"" >> $$HOME/.bashrc ; \
 			echo "eval \"\$$(pyenv virtualenv-init -)\"" >> $$HOME/.bashrc ; \
 			echo "# ===========================" >> $$HOME/.bashrc ;\
-		fi \
+		fi ;\
 	fi
 	@. $$HOME/.bashrc
 	@if ! (python3 -m pip list --disable-pip-version-check | grep pipenv > /dev/null) ; then \
 		python3 -m pip install pipenv ; \
 		if ! grep -Fq "\$$PATH:\$$PYTHON_BIN_PATH" $$HOME/.bashrc; then \
 			echo "export PATH=\$$PATH:\$$PYTHON_BIN_PATH" >> $$HOME/.bashrc ; \
-		fi \
+		fi ;\
 		if ! grep -Fq "pipenv" $$HOME/.bashrc; then\
 			echo "export PYTHON_BIN_PATH=$$(python3 -m site --user-base)/bin" >> $$HOME/.bashrc ; \
-		fi \
+		fi ;\
 	fi
 	@. $$HOME/.bashrc
 
@@ -141,10 +141,10 @@ version:
 ###########################
 
 start-listener-local:
-	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=$(PROJECT_ID) python bot_listener/main.py
+	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=local python bot_listener/main.py
     
 start-executor-local:
-	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=$(PROJECT_ID) gunicorn bot_executor.flask_app:app \
+	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=local gunicorn bot_executor.flask_app:app \
 			--bind :8000 \
 			--workers 1 \
 			--threads 1 \

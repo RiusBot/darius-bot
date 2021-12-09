@@ -57,5 +57,5 @@ class BaseParser(ABC):
     def parse_action(self):
         raise NotImplementedError
 
-    def parse_price(self):
+    def parse_price(self, message: str):
         return None, None, None, None

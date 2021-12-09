@@ -1,3 +1,4 @@
 telegram_api_id: 8230873
 telegram_api_hash: 'a7166dd79cbb76b0f3845557d7ee37a0'
-backend_endpoint: ""
+#backend_endpoint: "https://darius-332003.de.r.appspot.com"
+backend_endpoint: "http://localhost:8080/"

@@ -1,6 +1,11 @@
 import os
 import yaml
 import logging
+from firebase_admin import auth, initialize_app
+
+
+initialize_app()
+usingProjectId = os.getenv('project_id', 'local')
 
 
 def get_logging_level():
@@ -18,16 +23,18 @@ def configure_logging():
         level=numeric_level,
         datefmt="%Y-%m-%d %H:%M:%S",
         format="[%(asctime)s] [%(levelname)s] [%(module)s]: #%(funcName)s @%(lineno)d: %(message)s",
-        # format="[%(asctime)s] [%(process)s] [%(levelname)s] [%(module)s]: #%(funcName)s @%(lineno)d: %(message)s",
     )
     logging.info(f"Logging level: {logging_level}")
 
 
 def read_config():
-    yaml_file_path = os.path.join(os.path.dirname(__file__), "../config.yaml")
-    with open(yaml_file_path) as yaml_file:
-        config = yaml.safe_load(yaml_file)
-    return config
+    if usingProjectId == "local":
+        yaml_file_path = os.path.join(os.path.dirname(__file__), "../config.yaml")
+        with open(yaml_file_path) as yaml_file:
+            config = yaml.safe_load(yaml_file)
+        return config
+    else:
+        pass  # read from firestore
 
 
 configure_logging()

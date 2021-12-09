@@ -7,7 +7,7 @@ from firebase_admin import auth, initialize_app
 
 
 initialize_app()
-usingProjectId = os.getenv('project_id', 'darius-332003')
+usingProjectId = os.getenv('project_id', 'local')
 
 
 def fetch_access_token(audience_url):
@@ -43,9 +43,9 @@ def check_client_access(json_payload):
 def fetch_secret_token_manager():
     from google.cloud import secretmanager
     secretsManagerClient = secretmanager.SecretManagerServiceClient()
-    payload = secretsManagerClient.access_secret_version(
-        f"projects/{usingProjectId}/secrets/backend/versions/latest"
-    ).payload.data.decode('UTF-8')
+    name = secretsManagerClient.secret_version_path(usingProjectId, "backend", "latest")
+    response = secretsManagerClient.access_secret_version(request={"name": name})
+    payload = response.payload.data.decode("UTF-8")
     try:
         Secret = json.loads(payload)
         Token = Secret['token']
@@ -58,14 +58,14 @@ def fetch_secret_token_manager():
 def fetch_secret_token_firestore():
     from firebase_admin import firestore
     db = firestore.Client()
-    Secret = db.collection("secrets").document("backend").get().to_dict()
-    Token = Secret['token']
+    Secret = db.collection("config").document("backend").get().to_dict()
+    Token = Secret['auth_token']
     return Token
 
 
 def check_server_access(json_payload):
     try:
-        Token = fetch_secret_token()
+        Token = fetch_secret_token_firestore()
         requestToken = json_payload.get('token')
         if not Token or not requestToken:
             return False
@@ -77,7 +77,7 @@ def check_server_access(json_payload):
 
 def authenticate(json_payload):
     return True
-    if usingProjectId != "darius-332003":
+    if usingProjectId != "local":
         if check_client_access(json_payload) is False:
             if check_server_access(json_payload) is False:
                 return False

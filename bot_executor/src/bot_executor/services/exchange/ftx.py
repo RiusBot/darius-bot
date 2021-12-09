@@ -183,7 +183,7 @@ class FtxClient():
             params=params
         )
 
-        return tp_order, sl_order
+        return tp_order.get("result"), sl_order.get("result")
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
         price = open_order["price"]
@@ -236,7 +236,7 @@ class FtxClient():
             params=params
         )
 
-        return tp_order, sl_order
+        return tp_order.get("result"), sl_order.get("result")
 
     def process_oco_order(self, oco_order):
         tp_order = None

@@ -77,10 +77,10 @@ def main_validator(f):
             "duplicate",
             "api_key",
             "api_secret",
-            "scalp_entry",
-            "scalp_stop_loss",
-            "scalp_take_profit",
-            "price",
+            # "scalp_entry",
+            # "scalp_stop_loss",
+            # "scalp_take_profit",
+            # "price",
         ]
         string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
         numeric_fields = ["quantity", "leverage"]
@@ -99,7 +99,7 @@ def main_validator(f):
         errors += apply_enum_validators(data, enums)
 
         if errors:
-            return jsonify({"error_messages": errors}), 400
+            return jsonify({"error_message": errors}), 400
         return f(*args, **kwargs)
 
     return wrapper
