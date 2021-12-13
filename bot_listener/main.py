@@ -41,8 +41,9 @@ async def get_IDs():
 async def send_to_execute(info: dict):
     return
     logging.info("send to execute")
-    info["token"] = fetch_secret_token_manager()
-    response = requests.post(config["execute_endpoint"], json=info)
+    token = fetch_secret_token_manager()
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.post(config["execute_endpoint"], json=info, headers=headers)
     logging.info(str(response))
     try:
         logging.info(json.dumps(response.json()))
