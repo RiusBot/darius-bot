@@ -35,7 +35,7 @@ class BaseParser(ABC):
 
             return {
                 "channel": channel,
-                "content": content,
+                "content": content[:1024],
                 "message_timestamp": message_timestamp,
                 "recieve_timestamp": recieve_timestamp,
                 "symbol": symbol,

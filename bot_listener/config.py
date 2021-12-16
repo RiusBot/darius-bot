@@ -1,10 +1,8 @@
 import os
 import yaml
 import logging
-from firebase_admin import auth, initialize_app
 
 
-initialize_app()
 usingProjectId = os.getenv('project_id', 'local')
 
 
