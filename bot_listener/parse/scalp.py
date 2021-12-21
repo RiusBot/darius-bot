@@ -4,8 +4,11 @@ from .base import BaseParser
 
 class ScalpParser(BaseParser):
 
+    def __init__(self):
+        self.name = "DAILYSCALP"
+
     def parse_symbol(self, message: str):
-        return message.split('\n')[0],split(' ')[0].replace("USDT", "")
+        return message.split('\n')[0].split(' ')[0].replace("USDT", "")
 
     def parse_action(self, message: str):
         if "LONG" in message:

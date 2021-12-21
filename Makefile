@@ -7,7 +7,7 @@ ifeq ($(ENV), prod)
 	CLOUDBUILD = cloudbuild-prod.yml
 	PROJECT_ID = darius-332003
 	APP = app-prod.yml
-else ifeq ($(ENV), dev)
+else
 	CREDENTIAL = darius-332003-6391a8358dec.json
 	CLOUDBUILD = cloudbuild-dev.yml
 	PROJECT_ID = darius-332003

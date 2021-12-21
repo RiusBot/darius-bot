@@ -8,6 +8,9 @@ from .base import BaseParser
 
 class RoseParser(BaseParser):
 
+    def __init__(self):
+        self.name = "ROSE"
+
     @functools.lru_cache(maxsize=None)
     def decode(self, message: str):
         try:

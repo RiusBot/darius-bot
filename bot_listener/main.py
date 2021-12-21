@@ -5,7 +5,7 @@ import requests
 # import asyncio
 from config import config
 from telethon import TelegramClient, events
-from auth import fetch_secret_token_manager
+from auth import fetch_secret_token_firestore
 
 
 telegram_client = TelegramClient('darius-bot-listener', config["telegram_api_id"], config["telegram_api_hash"])
@@ -39,11 +39,10 @@ async def get_IDs():
 
 
 async def send_to_execute(info: dict):
-    return
     logging.info("send to execute")
-    token = fetch_secret_token_manager()
+    token = fetch_secret_token_firestore()
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(config["execute_endpoint"], json=info, headers=headers)
+    response = requests.post(config["backend_endpoint"], json=info, headers=headers)
     logging.info(str(response))
     try:
         logging.info(json.dumps(response.json()))
@@ -56,11 +55,11 @@ with telegram_client:
     telegram_client.loop.run_until_complete(get_channels())
 
 
-@telegram_client.on(events.NewMessage(from_users=test_channel, forwards=False))
-async def test_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
-    info = parse.RoseParser().parse(event)
-    logging.info(json.dumps(info, indent=4))
+# @telegram_client.on(events.NewMessage(from_users=test_channel, forwards=False))
+# async def test_handler(event):
+#     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+#     info = parse.RoseParser().parse(event)
+#     logging.info(json.dumps(info, indent=4))
 
 
 @telegram_client.on(events.NewMessage(from_users=rose_channel, forwards=False))

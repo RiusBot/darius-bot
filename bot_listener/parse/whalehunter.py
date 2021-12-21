@@ -4,6 +4,9 @@ from .base import BaseParser
 
 class WhalehunterParser(BaseParser):
 
+    def __init__(self):
+        self.name = "WHALE"
+
     def parse_symbol(self, message: str):
         symbol_list = re.findall('#[^\s]+', message)
         symbol_list = [i.replace('#', '') for i in symbol_list]

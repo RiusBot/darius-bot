@@ -4,6 +4,9 @@ from .base import BaseParser
 
 class PerpetualParser(BaseParser):
 
+    def __init__(self):
+        self.name = "PERPETUAL"
+
     def parse_symbol(self, message: str):
         symbol_list = re.findall('#[^\s]+', message)
         symbol_list = [i.replace('#', '') for i in symbol_list]

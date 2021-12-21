@@ -7,7 +7,8 @@ class BaseParser(ABC):
 
     def parse(self, event):
         try:
-            channel = event.chat.title
+            # channel = event.chat.title
+            channel = self.name
             content = event.text
             message_timestamp = event.date.timestamp()
             recieve_timestamp = datetime.datetime.now().timestamp()
