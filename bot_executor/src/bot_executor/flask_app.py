@@ -34,12 +34,11 @@ def main():
     try:
         if authenticate(order_info) is False:
             raise Exception("access token is not valid")
-        
+        order = order_execute(order_info)
+        return jsonify(order), 200
+    except Exception as e:
         logging.info("Order info:")
         logging.info(json.dumps(order_info, indent=4))
-        order = order_execute(order_info)
-        return jsonify(order_info), 200
-    except Exception as e:
         logging.exception("")
         traceback.format_exc()
         return jsonify({"error_message": str(e)}), 500

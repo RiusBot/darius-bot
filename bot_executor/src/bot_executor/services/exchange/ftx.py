@@ -18,7 +18,7 @@ class FtxClient():
         self.sl = config.get("stop_loss")
         self.tp = config.get("take_profit")
         self.margin = config.get("margin")
-        self.no_duplicate = not config["duplicate"]
+        self.no_duplicate = config["duplicate"]
         self.subaccount = config.get("subaccount")
 
         options = {
@@ -48,7 +48,7 @@ class FtxClient():
         self.markets = self.exchange.loadMarkets(True)
     
     def make_symbol(self, symbol: str):
-        if self.target == "SPOT":
+        if self.target in ["SPOT", "MARGIN"]:
             return f"{symbol}/USD"
         elif self.target == "FUTURE":
             return f"{symbol}-PERP"
@@ -85,6 +85,8 @@ class FtxClient():
     def create_market_buy(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
+        price = self.exchange.price_to_precision(symbol, price)
+        amount = self.exchange.amount_to_precision(symbol, amount)
         logging.info(f"""
             Market Buy {symbol}
             Open price : {price}
@@ -99,6 +101,8 @@ class FtxClient():
     def create_limit_buy(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
+        price = self.exchange.price_to_precision(symbol, price)
+        amount = self.exchange.amount_to_precision(symbol, amount)
         logging.info(f"""
             Limit Buy {symbol}
             Open price : {price}
@@ -111,6 +115,8 @@ class FtxClient():
     def create_market_sell(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
+        price = self.exchange.price_to_precision(symbol, price)
+        amount = self.exchange.amount_to_precision(symbol, amount)
         logging.info(f"""
             Market Sell {symbol}
             Open price : {price}
@@ -123,6 +129,8 @@ class FtxClient():
     def create_limit_sell(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
+        price = self.exchange.price_to_precision(symbol, price)
+        amount = self.exchange.amount_to_precision(symbol, amount)
         logging.info(f"""
             Limit Sell {symbol}
             Open price : {price}
@@ -136,6 +144,7 @@ class FtxClient():
         price = open_order["price"]
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
+        amount = self.exchange.amount_to_precision(symbol, amount)
         if open_order.get("average") is not None:
             price = float(open_order["average"])
         elif open_order.get("price") is not None:
@@ -145,6 +154,10 @@ class FtxClient():
             tp_price = price * (1 + take_profit)
         if sl_price is None:
             sl_price = price * (1 - stop_loss)
+        sl_price = max(sl_price, price * 0.01)
+        tp_price = self.exchange.price_to_precision(symbol, tp_price)
+        sl_price = self.exchange.price_to_precision(symbol, sl_price)
+
         tp_order = None
         sl_order = None
         logging.info(f"""
@@ -189,6 +202,7 @@ class FtxClient():
         price = open_order["price"]
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
+        amount = self.exchange.amount_to_precision(symbol, amount)
         if open_order.get("average") is not None:
             price = float(open_order["average"])
         elif open_order.get("price") is not None:
@@ -198,6 +212,10 @@ class FtxClient():
             tp_price = price * (1 - take_profit)
         if sl_price is None:
             sl_price = price * (1 + stop_loss)
+        tp_price = max(price * 0.01, tp_price)
+        tp_price = self.exchange.price_to_precision(symbol, tp_price)
+        sl_price = self.exchange.price_to_precision(symbol, sl_price)
+
         tp_order = None
         sl_order = None
         logging.info(f"""

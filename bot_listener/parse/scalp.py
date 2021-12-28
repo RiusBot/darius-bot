@@ -11,9 +11,9 @@ class ScalpParser(BaseParser):
         return message.split('\n')[0].split(' ')[0].replace("USDT", "")
 
     def parse_action(self, message: str):
-        if "LONG" in message:
+        if "LONG" in message.upper():
             return "BUY"
-        elif "SHORT" in message:
+        elif "SHORT" in message.upper():
             return "SELL"
 
     def parse_price(self, message: str):

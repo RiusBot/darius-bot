@@ -32,7 +32,7 @@ def check_client_access(json_payload):
         if clientUserIdToken is None or clientUserIdToken == '':
             return False
         decoded_token = auth.verify_id_token(clientUserIdToken)
-        uid = decoded_token['uid']
+        uid = decoded_token.get('uid')
         return uid is not None and uid is not None
     except Exception:
         logging.error("exception when dealing with check_client_access token")
@@ -66,7 +66,7 @@ def fetch_secret_token_firestore():
 def check_server_access(json_payload):
     try:
         Token = fetch_secret_token_firestore()
-        requestToken = json_payload.get('token')
+        requestToken = json_payload.pop('token', None)
         if not Token or not requestToken:
             return False
         return Token == requestToken
