@@ -118,8 +118,8 @@ class BinanceClient():
     def create_market_buy(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
-        price = self.exchange.price_to_precision(symbol, price)
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        price = float(self.exchange.price_to_precision(symbol, price))
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Market Buy {symbol}
             price : {price}
@@ -132,22 +132,25 @@ class BinanceClient():
     def create_limit_buy(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
-        price = self.exchange.price_to_precision(symbol, price)
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        price = float(self.exchange.price_to_precision(symbol, price))
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Limit Buy {symbol}
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params=self.get_position_param("BUY"))
-        order["average"] = order.get("price", price)
+        params = self.get_position_param("BUY")
+        params["timeInForce"] = "IOC"
+        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params=params)
+        order["average"] = float(order.get("price", price))
+        order["amount"] = float(order.get("filled", 0))
         return order
 
     def create_market_sell(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
-        price = self.exchange.price_to_precision(symbol, price)
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        price = float(self.exchange.price_to_precision(symbol, price))
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Market Sell {symbol}
             Amount : {amount}
@@ -160,20 +163,23 @@ class BinanceClient():
     def create_limit_sell(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
-        price = self.exchange.price_to_precision(symbol, price)
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        price = float(self.exchange.price_to_precision(symbol, price))
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Limit Sell {symbol}
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitSellOrder(symbol, amount, price, params=self.get_position_param("SELL"))
-        order["average"] = order.get("price", price)
+        params = self.get_position_param("SELL")
+        params["timeInForce"] = "IOC"
+        order = self.exchange.createLimitSellOrder(symbol, amount, price, params=params)
+        order["average"] = float(order.get("price", price))
+        order["amount"] = float(order.get("filled", 0))
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
         amount = float(open_order["amount"]) * 0.99
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
         if tp_price is None:
             tp_price = price * (1 + take_profit)
@@ -181,14 +187,14 @@ class BinanceClient():
             sl_price = price * (1 - stop_loss)
 
         sl_price = max(sl_price, price * 0.01)
-        tp_price = self.exchange.price_to_precision(symbol, tp_price)
-        sl_price = self.exchange.price_to_precision(symbol, sl_price)
+        tp_price = float(self.exchange.price_to_precision(symbol, tp_price))
+        sl_price = float(self.exchange.price_to_precision(symbol, sl_price))
 
         tp_order = None
         sl_order = None
         logging.info(f"""
             Create OCO order
-            Amount: {amount},
+            Amount: {amount}
             Price: {price}
             Stop loss: {sl_price},
             Take profit : {tp_price}
@@ -251,7 +257,7 @@ class BinanceClient():
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
         amount = float(open_order["amount"]) * 0.99
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
         if tp_price is None:
             tp_price = price * (1 - take_profit)
@@ -259,8 +265,8 @@ class BinanceClient():
             sl_price = price * (1 + stop_loss)
 
         tp_price = max(price * 0.01, tp_price)
-        tp_price = self.exchange.price_to_precision(symbol, tp_price)
-        sl_price = self.exchange.price_to_precision(symbol, sl_price)
+        tp_price = float(self.exchange.price_to_precision(symbol, tp_price))
+        sl_price = float(self.exchange.price_to_precision(symbol, sl_price))
 
         tp_order = None
         sl_order = None

@@ -85,8 +85,8 @@ class FtxClient():
     def create_market_buy(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
-        price = self.exchange.price_to_precision(symbol, price)
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        price = float(self.exchange.price_to_precision(symbol, price))
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Market Buy {symbol}
             Open price : {price}
@@ -101,22 +101,22 @@ class FtxClient():
     def create_limit_buy(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
-        price = self.exchange.price_to_precision(symbol, price)
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        price = float(self.exchange.price_to_precision(symbol, price))
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Limit Buy {symbol}
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitBuyOrder(symbol, amount, price)
+        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params={'ioc': True})
         order["average"] = order.get("price", price)
         return order
 
     def create_market_sell(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
-        price = self.exchange.price_to_precision(symbol, price)
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        price = float(self.exchange.price_to_precision(symbol, price))
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Market Sell {symbol}
             Open price : {price}
@@ -129,34 +129,35 @@ class FtxClient():
     def create_limit_sell(self, symbol: str):
         price = self.get_price(symbol)
         amount = self.quantity / price * self.leverage
-        price = self.exchange.price_to_precision(symbol, price)
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        price = float(self.exchange.price_to_precision(symbol, price))
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Limit Sell {symbol}
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitSellOrder(symbol, amount, price)
+        order = self.exchange.createLimitSellOrder(symbol, amount, price, params={'ioc': True})
         order["average"] = order.get("price", price)
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
-        price = open_order["price"]
+        price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         if open_order.get("average") is not None:
             price = float(open_order["average"])
         elif open_order.get("price") is not None:
             price = float(open_order["price"])
-        
+
         if tp_price is None:
             tp_price = price * (1 + take_profit)
         if sl_price is None:
             sl_price = price * (1 - stop_loss)
+
         sl_price = max(sl_price, price * 0.01)
-        tp_price = self.exchange.price_to_precision(symbol, tp_price)
-        sl_price = self.exchange.price_to_precision(symbol, sl_price)
+        tp_price = float(self.exchange.price_to_precision(symbol, tp_price))
+        sl_price = float(self.exchange.price_to_precision(symbol, sl_price))
 
         tp_order = None
         sl_order = None
@@ -199,10 +200,10 @@ class FtxClient():
         return tp_order.get("result"), sl_order.get("result")
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
-        price = open_order["price"]
+        price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
-        amount = self.exchange.amount_to_precision(symbol, amount)
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
         if open_order.get("average") is not None:
             price = float(open_order["average"])
         elif open_order.get("price") is not None:
@@ -213,8 +214,8 @@ class FtxClient():
         if sl_price is None:
             sl_price = price * (1 + stop_loss)
         tp_price = max(price * 0.01, tp_price)
-        tp_price = self.exchange.price_to_precision(symbol, tp_price)
-        sl_price = self.exchange.price_to_precision(symbol, sl_price)
+        tp_price = float(self.exchange.price_to_precision(symbol, tp_price))
+        sl_price = float(self.exchange.price_to_precision(symbol, sl_price))
 
         tp_order = None
         sl_order = None
