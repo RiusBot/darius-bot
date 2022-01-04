@@ -201,33 +201,65 @@ class BinanceClient():
         """)
 
         if self.target == "FUTURE":
-            tp_order_type = "TAKE_PROFIT" if self.take_profit_type == "LIMIT" else "TAKE_PROFIT_MARKET"
-            sl_order_type = "STOP" if self.stop_loss_type == "LIMIT" else "STOP_MARKET"
+            tp_order_type = {
+                "MARKET": "TAKE_PROFIT_MARKET",
+                "LIMIT": "TAKE_PROFIT",
+                "TRAILING": "TRAILING_STOP_MARKET"
+            }.get(self.take_profit_type)
+            sl_order_type = {
+                "MARKET": "STOP_MARKET",
+                "LIMIT": "STOP",
+                "TRAILING": "TRAILING_STOP_MARKET"
+            }.get(self.stop_loss_type)
+
+            if self.take_profit_type != "TRAILING":
+                tp_params = {
+                    "stopPrice": tp_price,
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("SHORT")
+                }
+            else:
+                tp_params = {
+                    "callbackRate": take_profit,
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("SHORT")
+                }
+                if not self.get_position_mode():
+                    tp_params["reduceOnly"] = True
+
             tp_order = self.exchange.create_order(
                 symbol,
                 type=tp_order_type,
                 side="SELL",
                 price=tp_price,
                 amount=amount,
-                params={
-                    "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
+                params=tp_params
+            )
+
+            if self.sl_order_type != "TRAILING":
+                sl_params = {
+                    "stopPrice": sl_price,
+                    "closePosition": (sl_order_type=="STOP_MARKET"),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
-            )
+            else:
+                sl_params = {
+                    "callbackRate": stop_loss,
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("SHORT")
+                }
+                if not self.get_position_mode():
+                    sl_params["reduceOnly"] = True
+
             sl_order = self.exchange.create_order(
                 symbol,
                 type=sl_order_type,
                 side="SELL",
                 amount=amount,
                 price=sl_price,
-                params={
-                    "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET"),
-                    "priceProtect": True,
-                    "positionSide": self.get_position_side("SHORT")
-                }
+                params=sl_params
             )
         elif self.target == "SPOT":
             tp_order_type = "TAKE_PROFIT_LIMIT" if self.take_profit_type == "LIMIT" else "TAKE_PROFIT"
@@ -270,8 +302,17 @@ class BinanceClient():
 
         tp_order = None
         sl_order = None
-        tp_order_type = "TAKE_PROFIT" if self.take_profit_type == "LIMIT" else "TAKE_PROFIT_MARKET"
-        sl_order_type = "STOP" if self.stop_loss_type == "LIMIT" else "STOP_MARKET"
+        tp_order_type = {
+            "MARKET": "TAKE_PROFIT_MARKET",
+            "LIMIT": "TAKE_PROFIT",
+            "TRAILING": "TRAILING_STOP_MARKET"
+        }.get(self.take_profit_type)
+        sl_order_type = {
+            "MARKET": "STOP_MARKET",
+            "LIMIT": "STOP",
+            "TRAILING": "TRAILING_STOP_MARKET"
+        }.get(self.stop_loss_type)
+
         logging.info(f"""
             Create OCO short order
             Amount: {amount},
@@ -281,31 +322,55 @@ class BinanceClient():
         """)
 
         if self.target == "FUTURE":
+
+            if self.take_profit_type != "TRAILING":
+                tp_params = {
+                    "stopPrice": tp_price,
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("BUY")
+                }
+            else:
+                tp_params = {
+                    "callbackRate": take_profit,
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("BUY")
+                }
+                if not self.get_position_mode():
+                    tp_params["reduceOnly"] = True
+
             tp_order = self.exchange.create_order(
                 symbol,
                 type=tp_order_type,
                 side="BUY",
                 price=tp_price,
                 amount=amount,
-                params={
-                    "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
+                params=tp_params
+            )
+
+            if self.sl_order_type != "TRAILING":
+                sl_params = {
+                    "stopPrice": sl_price,
+                    "closePosition": (sl_order_type=="STOP_MARKET"),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
-            )
+            else:
+                sl_params = {
+                    "callbackRate": stop_loss,
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("BUY")
+                }
+                if not self.get_position_mode():
+                    sl_params["reduceOnly"] = True
+
             sl_order = self.exchange.create_order(
                 symbol,
                 type=sl_order_type,
                 side="BUY",
                 price=sl_price,
                 amount=amount,
-                params={
-                    "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET"),
-                    "priceProtect": True,
-                    "positionSide": self.get_position_side("BUY")
-                }
+                params=sl_params
             )
         return tp_order, sl_order
 

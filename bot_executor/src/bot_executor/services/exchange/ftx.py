@@ -172,13 +172,16 @@ class FtxClient():
         params = {
             "market": symbol,
             "side": "sell",
-            "triggerPrice": tp_price,
             "size": amount,
             "type": "takeProfit",
             "reduceOnly": True
         }
-        if self.take_profit_type == "LIMIT":
-            params["orderPrice"] = tp_price
+        if self.take_profit_type != "TRAILING":
+            params["triggerPrice"] = tp_price
+            if self.take_profit_type == "LIMIT":
+                params["orderPrice"] = tp_price
+        else:
+            params["trailValue"] = take_profit
         tp_order = self.exchange.private_post_conditional_orders(
             params=params
         )
@@ -186,13 +189,16 @@ class FtxClient():
         params = {
             "market": symbol,
             "side": "sell",
-            "triggerPrice": sl_price,
             "size": amount,
             "type": "stop",
             "reduceOnly": True
         }
-        if self.stop_loss_type == "LIMIT":
-            params["orderPrice"] = sl_price
+        if self.stop_loss_type != "TRAILING":
+            params["triggerPrice"] = sl_price
+            if self.stop_loss_type == "LIMIT":
+                params["orderPrice"] = sl_price
+        else:
+            params["trailValue"] = stop_loss
         sl_order = self.exchange.private_post_conditional_orders(
             params=params
         )
@@ -230,13 +236,16 @@ class FtxClient():
         params = {
             "market": symbol,
             "side": "buy",
-            "triggerPrice": tp_price,
             "size": amount,
             "type": "takeProfit",
             "reduceOnly": True
         }
-        if self.take_profit_type == "LIMIT":
-            params["orderPrice"] = tp_price
+        if self.take_profit_type != "TRAILING":
+            params["triggerPrice"] = tp_price
+            if self.take_profit_type == "LIMIT":
+                params["orderPrice"] = tp_price
+        else:
+            params["trailValue"] = take_profit
         tp_order = self.exchange.private_post_conditional_orders(
             params=params
         )
@@ -244,13 +253,16 @@ class FtxClient():
         params = {
             "market": symbol,
             "side": "buy",
-            "triggerPrice": sl_price,
             "size": amount,
             "type": "stop",
             "reduceOnly": True
         }
-        if self.stop_loss_type == "LIMIT":
-            params["orderPrice"] = sl_price
+        if self.stop_loss_type != "TRAILING":
+            params["triggerPrice"] = sl_price
+            if self.stop_loss_type == "LIMIT":
+                params["orderPrice"] = sl_price
+        else:
+            params["trailValue"] = stop_loss
         sl_order = self.exchange.private_post_conditional_orders(
             params=params
         )
