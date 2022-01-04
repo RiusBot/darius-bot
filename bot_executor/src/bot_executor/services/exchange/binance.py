@@ -221,7 +221,7 @@ class BinanceClient():
                 }
             else:
                 tp_params = {
-                    "callbackRate": take_profit,
+                    "callbackRate": take_profit * 100,
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -246,7 +246,7 @@ class BinanceClient():
                 }
             else:
                 sl_params = {
-                    "callbackRate": stop_loss,
+                    "callbackRate": stop_loss * 100,
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -332,7 +332,7 @@ class BinanceClient():
                 }
             else:
                 tp_params = {
-                    "callbackRate": take_profit,
+                    "callbackRate": take_profit * 100,
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
@@ -357,7 +357,7 @@ class BinanceClient():
                 }
             else:
                 sl_params = {
-                    "callbackRate": stop_loss,
+                    "callbackRate": stop_loss * 100,
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
