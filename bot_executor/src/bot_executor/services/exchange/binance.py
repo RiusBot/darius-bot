@@ -237,7 +237,7 @@ class BinanceClient():
                 params=tp_params
             )
 
-            if self.sl_order_type != "TRAILING":
+            if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
                     "closePosition": (sl_order_type=="STOP_MARKET"),
@@ -348,7 +348,7 @@ class BinanceClient():
                 params=tp_params
             )
 
-            if self.sl_order_type != "TRAILING":
+            if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
                     "closePosition": (sl_order_type=="STOP_MARKET"),
