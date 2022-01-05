@@ -16,10 +16,11 @@ sentiment_channel = None
 justin_channel = None
 whale_channel = None
 scalp_channel = None
+vegas_channel = None
 
 
 async def get_channels():
-    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel
+    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel
     logging.info("Get channel")
     test_channel = await telegram_client.get_entity('test')
     rose_channel = await telegram_client.get_entity('🌹 Rose Premium Signal For Bot')
@@ -28,7 +29,8 @@ async def get_channels():
     justin_channel = await telegram_client.get_entity('https://t.me/justin_tw')
     whale_channel = await telegram_client.get_entity('whalehunter')
     scalp_channel = await telegram_client.get_entity('Daily Scalping Signal')
-    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel
+    vegas_channel = await telegram_client.get_entity('Vegas 4hr Indicator')
+    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel
 
 
 async def get_IDs():
@@ -60,6 +62,14 @@ with telegram_client:
 #     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
 #     info = parse.RoseParser().parse(event)
 #     logging.info(json.dumps(info, indent=4))
+
+
+@telegram_client.on(events.NewMessage(from_users=vegas_channel, forwards=False))
+async def rose_handler(event):
+    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    info = parse.VegasParser().parse(event)
+    logging.info(json.dumps(info, indent=4))
+    await send_to_execute(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=rose_channel, forwards=False))

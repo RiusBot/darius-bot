@@ -9,26 +9,26 @@ class BaseParser(ABC):
         try:
             # channel = event.chat.title
             channel = self.name
-            content = event.text
+            content = self.parse_content(event.text)
             message_timestamp = event.date.timestamp()
             recieve_timestamp = datetime.datetime.now().timestamp()
 
             try:
-                symbol = self.parse_symbol(event.text)
+                symbol = self.parse_symbol(content)
             except Exception:
                 symbol = None
                 logging.error("parse symbol error")
                 logging.exception("")
 
             try:
-                action = self.parse_action(event.text)
+                action = self.parse_action(content)
             except Exception:
                 action = None
                 logging.error("parse action error")
                 logging.exception("")
 
             try:
-                entry, stop_loss, take_profit, price = self.parse_price(event.text)
+                entry, stop_loss, take_profit, price = self.parse_price(content)
             except Exception:
                 entry, stop_loss, take_profit, price = None, None, None, None
                 logging.error("parse price error")
@@ -60,3 +60,6 @@ class BaseParser(ABC):
 
     def parse_price(self, message: str):
         return None, None, None, None
+      
+    def parse_content(self, content: str):
+        return content

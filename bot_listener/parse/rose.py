@@ -11,17 +11,17 @@ class RoseParser(BaseParser):
     def __init__(self):
         self.name = "ROSE"
 
-    @functools.lru_cache(maxsize=None)
-    def decode(self, message: str):
+    def parse_content(self, message: str):
         try:
             message = base64.b64decode(message.encode("ascii")).decode("ascii")
-            return json.loads(message)
+            return message
         except Exception:
             # logging.exception("")
             logging.error("Not Rose encode message.")
+            return message
 
     def parse_symbol(self, message: str):
-        pro_message = self.decode(message)
+        pro_message = json.loads(message)
         if pro_message:
             symbol_list = pro_message["symbol_list"]
             if symbol_list:
@@ -31,7 +31,7 @@ class RoseParser(BaseParser):
                 return symbol
 
     def parse_action(self, message: str):
-        pro_message = self.decode(message)
+        pro_message = json.loads(message)
         if pro_message:
             action = pro_message.get("action")
             if isinstance(action, str):
