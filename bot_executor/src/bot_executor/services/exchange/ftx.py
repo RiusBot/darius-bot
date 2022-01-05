@@ -48,10 +48,7 @@ class FtxClient():
         self.markets = self.exchange.loadMarkets(True)
     
     def make_symbol(self, symbol: str):
-        if self.target in ["SPOT", "MARGIN"]:
-            return f"{symbol}/USD"
-        elif self.target == "FUTURE":
-            return f"{symbol}-PERP"
+        return f"{symbol}/USD"
     
     def get_volume(self, symbol: str) -> float:
         try:
