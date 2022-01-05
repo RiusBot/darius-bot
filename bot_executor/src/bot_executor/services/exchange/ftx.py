@@ -280,11 +280,14 @@ class FtxClient():
         return tp_order, sl_order
 
     def validate_symbol(self, symbol: str):
-        self.markets = self.exchange.loadMarkets(True)
         if symbol not in self.markets:
-            error_msg = f"{symbol} invalid symbol"
-            logging.error(error_msg)
-            raise Exception(error_msg)
+            self.markets = self.exchange.loadMarkets(True)
+            if symbol not in self.markets:
+                error_msg = f"{symbol} invalid symbol"
+                logging.error(error_msg)
+                logging.error(symbol)
+                logging.error(str(len(self.markets)))
+                raise Exception(error_msg)
 
     def validate_action(self, action: str):
         if action not in ["BUY", "SELL"]:
