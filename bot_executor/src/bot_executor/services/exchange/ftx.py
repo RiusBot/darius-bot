@@ -165,6 +165,9 @@ class FtxClient():
             Stop loss: {sl_price},
             Take profit : {tp_price}
         """)
+        
+        if amount <= 0:
+            return tp_order, sl_order
 
         params = {
             "market": symbol,
@@ -229,6 +232,8 @@ class FtxClient():
             Stop loss: {sl_price},
             Take profit : {tp_price}
         """)
+        if amount <= 0:
+            return tp_order, sl_order
 
         params = {
             "market": symbol,

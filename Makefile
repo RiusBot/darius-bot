@@ -171,5 +171,5 @@ deploy-bot-executor:
 			--concurrency 1 \
 			--timeout 2m \
 			--memory 1Gi \
-			--max-instances 1 \
+			--max-instances 2 \
 			--update-env-vars='project_id=$(PROJECT_ID)'

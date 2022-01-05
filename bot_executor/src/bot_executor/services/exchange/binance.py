@@ -199,6 +199,9 @@ class BinanceClient():
             Stop loss: {sl_price},
             Take profit : {tp_price}
         """)
+        
+        if amount <= 0:
+            return tp_order, sl_order
 
         if self.target == "FUTURE":
             tp_order_type = {
@@ -320,6 +323,9 @@ class BinanceClient():
             Stop loss: {sl_price},
             Take profit : {tp_price}
         """)
+        
+        if amount <= 0:
+            return tp_order, sl_order
 
         if self.target == "FUTURE":
 
