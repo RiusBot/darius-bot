@@ -1,6 +1,7 @@
 import json
 import logging
 from bot_executor.services.exchange.ftx import FtxClient
+from bot_executor.services.exchange.ftxus import FtxusClient
 from bot_executor.services.exchange.binance import BinanceClient
 
 
@@ -30,6 +31,8 @@ def get_exchange(order_info: dict):
         exchange = BinanceClient(order_info)
     elif exchange == "ftx":
         exchange = FtxClient(order_info)
+    elif exchange == "ftxus":
+        exchange = FtxusClient(order_info)
     # elif exchange == "gate":
     #     pass
     # elif exchange == "mexc":

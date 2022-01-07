@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Tuple
 
 
-class FtxClient():
+class FtxusClient():
 
     def __init__(self, config: dict):
         self.config = config
@@ -32,7 +32,7 @@ class FtxClient():
                 'FTX-SUBACCOUNT': self.subaccount
             }
             logging.info(f"headers: {headers}")
-        self.exchange = ccxt.ftx({
+        self.exchange = ccxt.ftxus({
             "enableRateLimit": True,
             "apiKey": config["api_key"],
             "secret": config["api_secret"],

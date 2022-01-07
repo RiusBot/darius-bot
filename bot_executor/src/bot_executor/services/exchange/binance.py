@@ -416,7 +416,7 @@ class BinanceClient():
                 logging.error(error_msg)
                 raise Exception(error_msg)
 
-    def validate_duplicate(self, symbol: str):
+    def validate_duplicate(self, symbol: str, action: str):
         if self.target == "SPOT" or self.target == "MARGIN":
             logging.info("check spot duplicate")
             token = symbol.split('/')[0]
@@ -434,7 +434,8 @@ class BinanceClient():
                 if position.get('symbol') == symbol and position.get('side'):
                     side = position.get('side')
                     logging.info(f"{symbol} has {side} position.")
-                    raise Exception("Position duplicate")
+                    if side.upper() == action:
+                        raise Exception("Position duplicate")
 
     def validate_order(self, symbol: str, action: str):
 
@@ -453,7 +454,7 @@ class BinanceClient():
             raise Exception("short only in future")
 
         if self.no_duplicate:
-            self.validate_duplicate(symbol)
+            self.validate_duplicate(symbol, action)
 
         # if config["minimum_volume"]:
         #     volume = self.get_volume(symbol)
