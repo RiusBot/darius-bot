@@ -22,6 +22,7 @@ class FtxClient():
         self.subaccount = config.get("subaccount")
 
         options = {
+            "defaultType": self.target.lower(),
             "adjustForTimeDifference": True,
             "verbose": True
         }
@@ -48,7 +49,10 @@ class FtxClient():
         self.markets = self.exchange.loadMarkets(True)
     
     def make_symbol(self, symbol: str):
-        return f"{symbol}/USD"
+        if self.target != "FUTURE":
+            return f"{symbol}/USD"
+        else:
+            return f"{symbol}/USD:USD"
     
     def get_volume(self, symbol: str) -> float:
         try:
@@ -120,6 +124,8 @@ class FtxClient():
             Amount : {amount}
         """)
         order = self.exchange.createMarketSellOrder(symbol, amount)
+        if order["price"] is None:
+            order["price"] = price
         logging.info(f"Sell average price : {order['average']}")
         return order
 
