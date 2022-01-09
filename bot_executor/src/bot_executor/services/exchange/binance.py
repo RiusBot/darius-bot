@@ -73,7 +73,6 @@ class BinanceClient():
             logging.error("get volume failed")
 
     def get_price(self, symbol: str) -> float:
-        self.exchange.loadMarkets(True)
         symbol = symbol.replace("/", "")
         return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"])
 
@@ -95,7 +94,6 @@ class BinanceClient():
         return float(balance)
 
     def get_margin(self, symbol: str) -> float:
-        self.exchange.loadMarkets(True)
         margin = None
         if self.target == "SPOT":
             margin = 999
@@ -391,7 +389,6 @@ class BinanceClient():
         return tp_order, sl_order
 
     def validate_symbol(self, symbol: str):
-        self.markets = self.exchange.loadMarkets(True)
         if symbol not in self.markets:
             error_msg = f"{symbol} invalid symbol"
             logging.error(error_msg)

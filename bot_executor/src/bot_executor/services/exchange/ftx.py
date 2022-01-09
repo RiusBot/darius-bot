@@ -47,16 +47,16 @@ class FtxClient():
             raise e
 
         self.markets = self.exchange.loadMarkets(True)
+        self.markets = {value.get('id', key): value for key, value in self.markets.items()}
     
     def make_symbol(self, symbol: str):
         if self.target != "FUTURE":
             return f"{symbol}/USD"
         else:
-            return f"{symbol}/USD:USD"
+            return f"{symbol}-PERP"
     
     def get_volume(self, symbol: str) -> float:
         try:
-            self.exchange.loadMarkets(True)
             symbol = symbol.replace("USDT", "USD")
             market = self.exchange.markets[symbol]
             info = market["info"]
@@ -66,7 +66,6 @@ class FtxClient():
             logging.error("get volume failed")
 
     def get_price(self, symbol: str) -> float:
-        self.exchange.loadMarkets(True)
         symbol = symbol.replace("USDT", "USD")
         return float(self.exchange.fetchTicker(symbol)['bid'])
 
@@ -79,7 +78,6 @@ class FtxClient():
         return float(balance)
 
     def get_margin(self, symbol: str) -> float:
-        self.exchange.loadMarkets(True)
         margin = self.exchange.private_get_account()["result"]["marginFraction"]
         return 999 if margin is None else float(margin)
 
@@ -289,7 +287,6 @@ class FtxClient():
 
     def validate_symbol(self, symbol: str):
         if symbol not in self.markets:
-            self.markets = self.exchange.loadMarkets(True)
             if symbol not in self.markets:
                 error_msg = f"{symbol} invalid symbol"
                 logging.error(error_msg)
