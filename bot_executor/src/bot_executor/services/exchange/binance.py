@@ -74,7 +74,7 @@ class BinanceClient():
 
     def get_price(self, symbol: str) -> float:
         symbol = symbol.replace("/", "")
-        return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"])
+        return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"]) * 1.01
 
     def get_balance(self):
         balance = 0
@@ -431,7 +431,11 @@ class BinanceClient():
                 if position.get('symbol') == symbol and position.get('side'):
                     side = position.get('side')
                     logging.info(f"{symbol} has {side} position.")
-                    if side.upper() == action:
+                    side_map = {
+                        "BUY": ("BUY", "LONG"),
+                        "SELL": ("SHORT", "SELL")
+                    }
+                    if side.upper() in side_map[action]:
                         raise Exception("Position duplicate")
 
     def validate_order(self, symbol: str, action: str):

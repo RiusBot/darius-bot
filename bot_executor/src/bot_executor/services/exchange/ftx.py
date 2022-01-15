@@ -48,6 +48,7 @@ class FtxClient():
 
         self.markets = self.exchange.loadMarkets(True)
         self.markets = {value.get('id', key): value for key, value in self.markets.items()}
+        self.exchange.markets = self.markets
     
     def make_symbol(self, symbol: str):
         if self.target != "FUTURE":
@@ -67,7 +68,7 @@ class FtxClient():
 
     def get_price(self, symbol: str) -> float:
         symbol = symbol.replace("USDT", "USD")
-        return float(self.exchange.fetchTicker(symbol)['bid'])
+        return float(self.exchange.fetchTicker(symbol)['bid']) * 1.01
 
     def get_balance(self):
         balance = 0
