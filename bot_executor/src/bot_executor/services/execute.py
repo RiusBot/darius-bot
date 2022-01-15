@@ -15,9 +15,9 @@ def order_execute(order_info: dict):
 
     result = {
         "status": "error" if order is None else "success",
-        "open": order.get("id", order.get("info", {}).get("id")),
-        "sl": None if sl_order is None else sl_order.get("id", sl_order.get("info", {}).get("id")),
-        "tp": None if tp_order is None else tp_order.get("id", tp_order.get("info", {}).get("id")),
+        "open_order": order.get("id", order.get("info", {}).get("id")),
+        "sl_order": None if sl_order is None else sl_order.get("id", sl_order.get("info", {}).get("id")),
+        "tp_order": None if tp_order is None else tp_order.get("id", tp_order.get("info", {}).get("id")),
         "price": order.get("average", order.get("price"))
     }
     logging.info("Results:")
