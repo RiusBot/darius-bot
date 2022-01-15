@@ -40,3 +40,22 @@ def get_exchange(order_info: dict):
     else:
         raise Exception(f"Exchange {exchange} not supprorted.")
     return exchange
+
+
+def order_clean(order_info: dict):
+    logging.info("Start order clean")
+    exchange = get_exchange(order_info)
+    if order_info["type"] == "limit":
+        result = {
+            "status": "error" if order is None else "success",
+        }
+    elif order_info["type"] == "oco":
+        result = {
+            "status": "error" if order is None else "success",
+        }
+    else:
+        raise Exception(f"Clean order type {order_info["type"]} not supported")
+
+    logging.info("Results:")
+    logging.info(json.dumps(result, indent=4))
+    return result

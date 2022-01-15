@@ -103,3 +103,43 @@ def main_validator(f):
         return f(*args, **kwargs)
 
     return wrapper
+
+
+def clean_validator(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        mandatory_fields = [
+            "exchange",
+            "test",
+            "target",
+            "quantity",
+            "leverage",
+            "order_type",
+            "stop_loss_type",
+            "take_profit_type",
+            "duplicate",
+            "api_key",
+            "api_secret",
+            "type"
+        ]
+        string_fields = ["exchange", "type", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
+        numeric_fields = ["quantity", "leverage"]
+        dict_fields = []
+        bool_fields = ["test", "duplicate"]
+        enums = {
+            "target": {"SPOT", "MARGIN", "FUTURE"},
+            "order_type": {"LIMIT", "MARKET"},
+            "stop_loss_type": {"LIMIT", "MARKET"},
+            "take_profit_type": {"LIMIT", "MARKET"},
+            "exchange": {"binance", "ftx"}
+        }
+        data = request.get_json()
+
+        errors = apply_fields_validators(data, mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields)
+        errors += apply_enum_validators(data, enums)
+
+        if errors:
+            return jsonify({"error_message": errors}), 400
+        return f(*args, **kwargs)
+
+    return wrapper

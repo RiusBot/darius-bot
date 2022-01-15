@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify, Response
 
 from bot_executor.config import configure_logging
 from bot_executor.services import validators
-from bot_executor.services.execute import order_execute
+from bot_executor.services.execute import order_execute, order_clean
 from bot_executor.services.auth import authenticate
 
 
@@ -36,6 +36,24 @@ def main():
             raise Exception("access token is not valid")
         order = order_execute(order_info)
         return jsonify(order), 200
+    except Exception as e:
+        order_info.pop('token')
+        logging.info("Order info:")
+        logging.info(json.dumps(order_info, indent=4))
+        logging.exception("")
+        traceback.format_exc()
+        return jsonify({"error_message": str(e)}), 500
+
+
+@app.route("/clean", methods=["POST"])
+@validators.clean_validator
+def clean():
+    order_info = request.get_json()
+    try:
+        if authenticate(order_info) is False:
+            raise Exception("access token is not valid")
+        result = order_clean(order_info)
+        return jsonify(result), 200
     except Exception as e:
         order_info.pop('token')
         logging.info("Order info:")
