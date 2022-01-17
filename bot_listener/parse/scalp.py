@@ -29,7 +29,7 @@ class ScalpParser(BaseParser):
                     take_profit = float(value.split(' ')[-1])
                 elif "entry" in key.lower():
                     entry = float(value.split(' ')[-1])
-                elif "stop" in key.lower():
+                elif "sl" in key.lower():
                     stop_loss = float(value.split(' ')[-1])
             except Exception:
                 pass

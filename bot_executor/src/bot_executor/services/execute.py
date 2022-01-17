@@ -14,7 +14,7 @@ def order_execute(order_info: dict):
         tp_order, sl_order = exchange.make_oco_order(order, order_info)
 
     result = {
-        "status": "error" if order is None else "success",
+        "status": 'success' if order else 'error',
         "open_order": order.get("id", order.get("info", {}).get("id")),
         "sl_order": None if sl_order is None else sl_order.get("id", sl_order.get("info", {}).get("id")),
         "tp_order": None if tp_order is None else tp_order.get("id", tp_order.get("info", {}).get("id")),
@@ -43,18 +43,26 @@ def get_exchange(order_info: dict):
 
 
 def order_clean(order_info: dict):
-    logging.info("Start order clean")
     exchange = get_exchange(order_info)
     if order_info["type"] == "limit":
-        result = {
-            "status": "error" if order is None else "success",
-        }
+        logging.info(f"Start limit order clean for trade {order_info['trade_id']}")
+        exchange = get_exchange(order_info)
+        status = exchange.clean_limit_order(
+            order_info["open_order"],
+            order_info["symbol"]
+        )
+        result = {"status": status}
     elif order_info["type"] == "oco":
-        result = {
-            "status": "error" if order is None else "success",
-        }
+        logging.info(f"Start oco order clean for trade {order_info['trade_id']}")
+        exchange = get_exchange(order_info)
+        status = exchange.clean_oco_order(
+            order_info["sl_order"],
+            order_info["tp_order"],
+            order_info["symbol"]
+        )
+        result = {"status": status}
     else:
-        raise Exception(f"Clean order type {order_info["type"]} not supported")
+        raise Exception(f"Clean order type {order_info['type']} not supported")
 
     logging.info("Results:")
     logging.info(json.dumps(result, indent=4))

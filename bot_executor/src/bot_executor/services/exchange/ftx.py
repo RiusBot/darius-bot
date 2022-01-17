@@ -3,8 +3,10 @@ import json
 import logging
 from typing import List, Dict, Tuple
 
+from .base import Base
 
-class FtxClient():
+
+class FtxClient(Base):
 
     def __init__(self, config: dict):
         self.config = config
@@ -108,8 +110,10 @@ class FtxClient():
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params={'ioc': True})
+        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params={'ioc': (self.target == "FUTURE")})
         order["average"] = order.get("price", price)
+        if self.target != "FUTURE":
+            order["amount"] = float(order.get("filled", 0))
         return order
 
     def create_market_sell(self, symbol: str):
@@ -138,8 +142,10 @@ class FtxClient():
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitSellOrder(symbol, amount, price, params={'ioc': True})
+        order = self.exchange.createLimitSellOrder(symbol, amount, price, params={'ioc': (self.target == "FUTURE")})
         order["average"] = order.get("price", price)
+        if self.target != "FUTURE":
+            order["amount"] = float(order.get("filled", 0))
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):

@@ -3,8 +3,10 @@ import json
 import logging
 from typing import List, Dict, Tuple
 
+from .base import Base
 
-class BinanceClient():
+
+class BinanceClient(Base):
 
     def __init__(self, config: dict):
         self.config = config
@@ -138,10 +140,12 @@ class BinanceClient():
             Amount : {amount}
         """)
         params = self.get_position_param("BUY")
-        params["timeInForce"] = "IOC"
+        if self.target != "FUTURE":
+            params["timeInForce"] = "IOC"
         order = self.exchange.createLimitBuyOrder(symbol, amount, price, params=params)
         order["average"] = float(order.get("price", price))
-        order["amount"] = float(order.get("filled", 0))
+        if self.target != "FUTURE":
+            order["amount"] = float(order.get("filled", 0))
         return order
 
     def create_market_sell(self, symbol: str):
@@ -169,10 +173,12 @@ class BinanceClient():
             Amount : {amount}
         """)
         params = self.get_position_param("SELL")
-        params["timeInForce"] = "IOC"
+        if self.target != "FUTURE":
+            params["timeInForce"] = "IOC"
         order = self.exchange.createLimitSellOrder(symbol, amount, price, params=params)
         order["average"] = float(order.get("price", price))
-        order["amount"] = float(order.get("filled", 0))
+        if self.target != "FUTURE":
+            order["amount"] = float(order.get("filled", 0))
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):

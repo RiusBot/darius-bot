@@ -55,7 +55,7 @@ def clean():
         result = order_clean(order_info)
         return jsonify(result), 200
     except Exception as e:
-        order_info.pop('token')
+        order_info.pop('token', None)
         logging.info("Order info:")
         logging.info(json.dumps(order_info, indent=4))
         logging.exception("")
