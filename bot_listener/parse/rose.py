@@ -25,10 +25,12 @@ class RoseParser(BaseParser):
         if pro_message:
             symbol_list = pro_message["symbol_list"]
             if symbol_list:
-                symbol = symbol_list[0]
-                symbol = symbol.replace("USDT", "")
-                symbol = re.compile('[^a-zA-Z0-9]').sub('', symbol)
-                return symbol
+                tmp = []
+                for symbol in symbol_list:
+                    symbol = symbol.replace("USDT", "")
+                    symbol = re.compile('[^a-zA-Z0-9]').sub('', symbol)
+                    tmp.append(symbol)
+                return tmp
 
     def parse_action(self, message: str):
         pro_message = json.loads(message)

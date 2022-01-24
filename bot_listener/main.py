@@ -45,12 +45,17 @@ async def send_to_execute(info: dict):
     logging.info("send to execute")
     token = fetch_secret_token_firestore()
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(config["backend_endpoint"], json=info, headers=headers)
-    logging.info(str(response))
-    try:
-        logging.info(json.dumps(response.json()))
-    except Exception:
-        logging.info(response.text)
+    
+    symbol_list = info["symbol"]
+    for symbol in symbol_list:
+        info["symbol"] = symbol
+        response = requests.post(config["backend_endpoint"], json=info, headers=headers)
+        logging.info(str(response))
+        try:
+            logging.info(json.dumps(response.json()))
+        except Exception:
+            logging.info(response.text)
+        asyncio.sleep(60)
 
 
 with telegram_client:
@@ -69,6 +74,14 @@ with telegram_client:
 async def rose_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.VegasParser().parse(event)
+    logging.info(json.dumps(info, indent=4))
+    await send_to_execute(info)
+
+
+@telegram_client.on(events.NewMessage(from_users=justin_channel, forwards=False))
+async def rose_handler(event):
+    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    info = parse.JustinParser().parse(event)
     logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
 

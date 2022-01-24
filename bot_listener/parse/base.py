@@ -15,6 +15,8 @@ class BaseParser(ABC):
 
             try:
                 symbol = self.parse_symbol(content)
+                if not isinstance(symbol, list):
+                    symbol = [symbol]
             except Exception:
                 symbol = None
                 logging.error("parse symbol error")
