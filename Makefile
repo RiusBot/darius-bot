@@ -126,6 +126,7 @@ clean:
 	find . -name "*.py[co]" -delete
 	find . -name "*~" -delete
 	find . -name "__pycache__" -delete
+	@find . -name ".ipynb*" -exec rm -rv {} +
 
 shell:
 	pipenv shell

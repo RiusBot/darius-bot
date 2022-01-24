@@ -30,6 +30,7 @@ async def get_channels():
     whale_channel = await telegram_client.get_entity('whalehunter')
     scalp_channel = await telegram_client.get_entity('Daily Scalping Signal')
     vegas_channel = await telegram_client.get_entity('Vegas 4hr Indicator')
+    print(scalp_channel)
     return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel
 
 
