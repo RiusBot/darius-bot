@@ -3,7 +3,7 @@ import json
 import logging
 import requests
 import functools
-from firebase_admin import auth, initialize_app
+from firebase_admin import auth, initialize_app, firestore
 
 
 initialize_app()
@@ -56,7 +56,6 @@ def fetch_secret_token_manager():
 
 @functools.lru_cache(maxsize=None)
 def fetch_secret_token_firestore():
-    from firebase_admin import firestore
     db = firestore.Client()
     Secret = db.collection("config").document("backend").get().to_dict()
     Token = Secret['auth_token']
@@ -76,7 +75,6 @@ def check_server_access(json_payload):
 
 
 def authenticate(json_payload):
-    return True
     if usingProjectId != "local":
         if check_client_access(json_payload) is False:
             if check_server_access(json_payload) is False:

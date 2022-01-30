@@ -205,6 +205,7 @@ class BinanceClient(Base):
         """)
         
         if amount <= 0:
+            logging.info(f"amount {amount} <= 0")
             return tp_order, sl_order
 
         if self.target == "FUTURE":

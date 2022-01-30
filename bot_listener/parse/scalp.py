@@ -8,7 +8,9 @@ class ScalpParser(BaseParser):
         self.name = "DAILYSCALP"
 
     def parse_symbol(self, message: str):
-        return message.split('\n')[0].split(' ')[0].replace("USDT", "")
+        tmp = message.split('\n')[0].split(' ')[0]
+        tmp = re.compile('[^a-zA-Z0-9]').sub('', tmp)
+        return tmp.replace("USDT", "")
 
     def parse_action(self, message: str):
         if "SHORT" in message.upper():
@@ -24,7 +26,7 @@ class ScalpParser(BaseParser):
             try:
                 key, value = line.split(':')
                 value = value.replace('/', ' ')
-                if "target" in key.lower():
+                if "target" in key.lower() or "tp" in key.lower():
                     take_profit = float(value.split(' ')[-1])
                 elif "entry" in key.lower():
                     entry = float(value.split(' ')[-1])

@@ -2,10 +2,11 @@ import json
 import parse
 import logging
 import requests
-# import asyncio
+import asyncio
 from config import config
 from telethon import TelegramClient, events
 from auth import fetch_secret_token_firestore
+from collections import Counter
 
 
 telegram_client = TelegramClient('darius-bot-listener', config["telegram_api_id"], config["telegram_api_hash"])
@@ -30,7 +31,7 @@ async def get_channels():
     whale_channel = await telegram_client.get_entity('whalehunter')
     scalp_channel = await telegram_client.get_entity('Daily Scalping Signal')
     vegas_channel = await telegram_client.get_entity('Vegas 4hr Indicator')
-    print(scalp_channel)
+    print(scalp_channel, justin_channel)
     return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel
 
 
@@ -42,20 +43,22 @@ async def get_IDs():
 
 
 async def send_to_execute(info: dict):
-    logging.info("send to execute")
+    #logging.info("send to execute")
     token = fetch_secret_token_firestore()
     headers = {"Authorization": f"Bearer {token}"}
     
     symbol_list = info["symbol"]
+    symbol_list = [] if symbol_list is None else symbol_list
+    action = info["action"]
     for symbol in symbol_list:
-        info["symbol"] = symbol
+        info["symbol"] = symbol.strip()
+        logging.info(f"{symbol} {action} send to execute.")
         response = requests.post(config["backend_endpoint"], json=info, headers=headers)
-        logging.info(str(response))
         try:
-            logging.info(json.dumps(response.json()))
+            logging.info(str(response) + " " + json.dumps(response.json()))
         except Exception:
-            logging.info(response.text)
-        asyncio.sleep(60)
+            logging.info(str(response) + " " + response.text)
+        await asyncio.sleep(60)
 
 
 with telegram_client:
@@ -63,15 +66,25 @@ with telegram_client:
     telegram_client.loop.run_until_complete(get_channels())
 
 
-# @telegram_client.on(events.NewMessage(from_users=test_channel, forwards=False))
+# @telegram_client.on(events.NewMessage(from_users=test_channel, forwards=True))
 # async def test_handler(event):
-#     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
-#     info = parse.RoseParser().parse(event)
-#     logging.info(json.dumps(info, indent=4))
+#     buy_info = parse.JustinParser("BUY").parse(event)
+#     sell_info = parse.JustinParser("SELL").parse(event)
+
+#     buy = Counter(buy_info['symbol'])
+#     sell = Counter(sell_info['symbol'])
+#     buy_info['symbol'] = [j for i, cnt in (buy - sell).items() for j in [i]*cnt]
+#     sell_info['symbol'] = [j for i, cnt in (sell - buy).items() for j in [i]*cnt]
+
+#     logging.info(json.dumps(buy_info, indent=4))
+#     #await send_to_execute(buy_info)
+
+#     logging.info(json.dumps(sell_info, indent=4))
+#     #await send_to_execute(sell_info)
 
 
 @telegram_client.on(events.NewMessage(from_users=vegas_channel, forwards=False))
-async def rose_handler(event):
+async def vegas_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.VegasParser().parse(event)
     logging.info(json.dumps(info, indent=4))
@@ -79,11 +92,21 @@ async def rose_handler(event):
 
 
 @telegram_client.on(events.NewMessage(from_users=justin_channel, forwards=False))
-async def rose_handler(event):
+async def justin_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
-    info = parse.JustinParser().parse(event)
-    logging.info(json.dumps(info, indent=4))
-    await send_to_execute(info)
+    buy_info = parse.JustinParser("BUY").parse(event)
+    sell_info = parse.JustinParser("SELL").parse(event)
+
+    buy = Counter(buy_info['symbol'])
+    sell = Counter(sell_info['symbol'])
+    buy_info['symbol'] = [j for i, cnt in (buy - sell).items() for j in [i]*cnt]
+    sell_info['symbol'] = [j for i, cnt in (sell - buy).items() for j in [i]*cnt]
+
+    logging.info(json.dumps(buy_info, indent=4))
+    await send_to_execute(buy_info)
+
+    logging.info(json.dumps(sell_info, indent=4))
+    await send_to_execute(sell_info)
 
 
 @telegram_client.on(events.NewMessage(from_users=rose_channel, forwards=False))

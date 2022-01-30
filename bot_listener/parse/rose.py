@@ -21,21 +21,27 @@ class RoseParser(BaseParser):
             return message
 
     def parse_symbol(self, message: str):
-        pro_message = json.loads(message)
-        if pro_message:
-            symbol_list = pro_message["symbol_list"]
-            if symbol_list:
-                tmp = []
-                for symbol in symbol_list:
-                    symbol = symbol.replace("USDT", "")
-                    symbol = re.compile('[^a-zA-Z0-9]').sub('', symbol)
-                    tmp.append(symbol)
-                return tmp
+        try:
+            pro_message = json.loads(message)
+            if pro_message:
+                symbol_list = pro_message["symbol_list"]
+                if symbol_list:
+                    tmp = []
+                    for symbol in symbol_list:
+                        symbol = symbol.replace("USDT", "")
+                        symbol = re.compile('[^a-zA-Z0-9]').sub('', symbol)
+                        tmp.append(symbol)
+                    return tmp
+        except Exception as e:
+            logger.error(str(e))
 
     def parse_action(self, message: str):
-        pro_message = json.loads(message)
-        if pro_message:
-            action = pro_message.get("action")
-            if isinstance(action, str):
-                action = action.upper()
-            return action
+        try:
+            pro_message = json.loads(message)
+            if pro_message:
+                action = pro_message.get("action")
+                if isinstance(action, str):
+                    action = action.upper()
+                return action
+        except Exception as e:
+          logger.error(str(e))

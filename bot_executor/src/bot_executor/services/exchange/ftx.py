@@ -110,7 +110,7 @@ class FtxClient(Base):
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params={'ioc': (self.target == "FUTURE")})
+        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params={'ioc': (self.target != "FUTURE")})
         order["average"] = order.get("price", price)
         if self.target != "FUTURE":
             order["amount"] = float(order.get("filled", 0))
@@ -142,7 +142,7 @@ class FtxClient(Base):
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitSellOrder(symbol, amount, price, params={'ioc': (self.target == "FUTURE")})
+        order = self.exchange.createLimitSellOrder(symbol, amount, price, params={'ioc': (self.target != "FUTURE")})
         order["average"] = order.get("price", price)
         if self.target != "FUTURE":
             order["amount"] = float(order.get("filled", 0))
