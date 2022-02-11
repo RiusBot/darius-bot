@@ -28,10 +28,10 @@ async def get_channels():
     perpetual_channel = await telegram_client.get_entity('Binance Perpetual Data Pro')
     sentiment_channel = await telegram_client.get_entity('Sentiment Indicator Notification')
     justin_channel = await telegram_client.get_entity('https://t.me/justin_tw')
-    whale_channel = await telegram_client.get_entity('whalehunter')
+    whale_channel = await telegram_client.get_entity('whalehunter🐳')
     scalp_channel = await telegram_client.get_entity('Daily Scalping Signal')
     vegas_channel = await telegram_client.get_entity('Vegas 4hr Indicator')
-    print(scalp_channel, justin_channel)
+    print(scalp_channel, justin_channel, whale_channel)
     return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel
 
 
@@ -51,7 +51,7 @@ async def send_to_execute(info: dict):
     symbol_list = [] if symbol_list is None else symbol_list
     action = info["action"]
     for symbol in symbol_list:
-        info["symbol"] = symbol.strip()
+        info["symbol"] = symbol.strip() if isinstance(symbol, str) else symbol
         logging.info(f"{symbol} {action} send to execute.")
         response = requests.post(config["backend_endpoint"], json=info, headers=headers)
         try:
@@ -80,7 +80,7 @@ with telegram_client:
 #     #await send_to_execute(buy_info)
 
 #     logging.info(json.dumps(sell_info, indent=4))
-#     #await send_to_execute(sell_info)
+#     await send_to_execute(sell_info)
 
 
 @telegram_client.on(events.NewMessage(from_users=vegas_channel, forwards=False))
@@ -128,7 +128,7 @@ async def perpetual_handler(event):
 @telegram_client.on(events.NewMessage(from_users=whale_channel, forwards=False))
 async def whale_handler(event):
     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
-    info = parse.WhaleParser().parse(event)
+    info = parse.WhalehunterParser().parse(event)
     logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
 

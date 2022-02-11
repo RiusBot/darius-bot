@@ -24,6 +24,7 @@ class BaseParser(ABC):
 
             try:
                 action = self.parse_action(content)
+                self.action = action
             except Exception:
                 action = None
                 logging.error("parse action error")

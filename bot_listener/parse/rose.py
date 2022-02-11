@@ -33,7 +33,7 @@ class RoseParser(BaseParser):
                         tmp.append(symbol)
                     return tmp
         except Exception as e:
-            logger.error(str(e))
+            logging.error(str(e))
 
     def parse_action(self, message: str):
         try:
@@ -44,4 +44,4 @@ class RoseParser(BaseParser):
                     action = action.upper()
                 return action
         except Exception as e:
-          logger.error(str(e))
+            logging.error(str(e))
