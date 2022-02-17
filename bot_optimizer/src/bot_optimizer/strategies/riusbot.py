@@ -106,10 +106,11 @@ class riusbot(IStrategy):
                     "timestamp": timestamp,
                 })
 
-            params = config["riusbot_params"]
-            self.minimal_roi = {"0": params['take_profit']}
-            self.stoploss = -params['stop_loss']
-            logging.info(f"load riusbot params {json.dumps(params)}")
+            if config.get('riusbot_params'):
+                params = config["riusbot_params"]
+                self.minimal_roi = {"0": params['take_profit']}
+                self.stoploss = -params['stop_loss']
+                logging.info(f"load riusbot params {json.dumps(params)}")
 
     @property
     def plot_config(self):

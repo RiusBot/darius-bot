@@ -17,6 +17,7 @@ class Performance(db.Model, serialize):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     # updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
     start_at = db.Column(db.DateTime)
+    end_at = db.Column(db.DateTime)
     breakdown = db.Column(db.String(8), nullable=False)
     result = db.Column(db.String(4096), nullable=False)
     channel = db.Column(db.String(32), nullable=False)
@@ -29,6 +30,8 @@ class Performance(db.Model, serialize):
 class Hyperopt(db.Model, serialize):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    start_at = db.Column(db.DateTime)
+    end_at = db.Column(db.DateTime)
     # updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
     params = db.Column(db.String(4096), nullable=False)
     channel = db.Column(db.String(32), nullable=False)

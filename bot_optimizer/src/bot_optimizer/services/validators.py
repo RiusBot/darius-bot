@@ -70,8 +70,8 @@ def validate(f, fields, *args, **kwargs):
 def hyperopt_validator(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        mandatory_fields = ["channel", "message", "timeframe", 'loss', 'days']
-        string_fields = ['channel', 'timeframe', 'loss']
+        mandatory_fields = ["channel", "message", "timeframe", 'loss', 'days', 'timerange']
+        string_fields = ['channel', 'timeframe', 'loss', 'timerange']
         numeric_fields = ['days']
         dict_fields = []
         bool_fields = []
@@ -84,8 +84,8 @@ def hyperopt_validator(f):
 def backtest_validator(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        mandatory_fields = ["channel", "message", "breakdown", "timeframe"]
-        string_fields = ["channel", "breakdown", "timeframe"]
+        mandatory_fields = ["channel", "message", "breakdown", "timeframe", 'timerange']
+        string_fields = ["channel", "breakdown", "timeframe", 'timerange']
         numeric_fields = []
         dict_fields = []
         bool_fields = []

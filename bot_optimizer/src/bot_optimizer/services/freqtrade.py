@@ -54,19 +54,27 @@ def freqtrade_download_data(json_payload):
     logging.info("download data")
     exchange = json_payload.get('exchange', 'binance')
     timeframe = json_payload.get('timeframe', '1h')
-    timerange = json_payload.get('timerange', (datetime.now() - timedelta(days=7)).strftime('%Y%m%d-'))
+    timerange = json_payload.get('timerange')
 
     sysargv = f"download-data --exchange {exchange} --timeframe {timeframe} --timerange {timerange}"
     freqtrade_run(sysargv)
 
 
+def process_timerange(json_payload, days: int):
+    timerange = json_payload['timerange']
+    start_at, end_at = timerange.split('-')
+    end_at = datetime.strptime(end_at, "%Y%m%d") if end_at else datetime.now()
+    start_at = datetime.strptime(start_at, "%Y%m%d") if start_at else end_at - timedelta(days=days)
+    return timerange, start_at, end_at
+
+    
 def freqtrade_hyperopt(db, json_payload: dict):
     logging.info("freqtrade hyperopt")
     freqtrade_init(json_payload)
 
     timeframe = json_payload.get('timeframe', '1h')
     days = json_payload.get('days', '180')
-    timerange = json_payload.get('timerange', (datetime.now() - timedelta(days=days)).strftime('%Y%m%d-'))
+    timerange, start_at, end_at = process_timerange(json_payload, days)
     loss = json_payload.get('loss')
     sysargv = f"hyperopt --strategy riusbot --timeframe {timeframe} --timerange {timerange} --hyperopt-loss {loss} --spaces roi stoploss"
     freqtrade_run(sysargv)
@@ -78,27 +86,31 @@ def freqtrade_hyperopt(db, json_payload: dict):
             'stop_loss': -result['params']['stoploss']['stoploss'],
             'export_time': result['export_time']
         }
-        print(json.dumps(params, indent=4))
+        logging.info(json.dumps(params, indent=4))
 
     create_hyperopt(
         db,
         json.dumps(params),
         json_payload.get('channel'),
         days,
-        loss
+        loss,
+        start_at,
+        end_at
     )
 
 
 def freqtrade_backtest(db, json_payload: dict):
     logging.info("freqtrade backtest")
-
+    
+    timeframe = json_payload.get('timeframe', '1h')
+    breakdown = json_payload.get('breakdown')
+    days = {'day': 1, 'week': 7, 'month': 30}.get(breakdown)
+    timerange, start_at, end_at = process_timerange(json_payload, days)
     channel = json_payload.get('channel')
-    params = get_hyperopt(channel, 'OnlyProfitHyperOptLoss')
+    hyperopt = get_hyperopt(db, channel, 'OnlyProfitHyperOptLoss', start_at)
+    params = json.loads(hyperopt.to_dict()['params'])
     freqtrade_init(json_payload, params)
 
-    timeframe = json_payload.get('timeframe', '1h')
-    days = {'day': 1, 'week': 7, 'month': 30}.get(json_payload.get('breakdown'))
-    timerange = json_payload.get('timerange', (datetime.now() - timedelta(days=days)).strftime('%Y%m%d-'))
     sysargv = f"backtesting --strategy riusbot --timeframe {timeframe} --timerange {timerange} --export trades"
     freqtrade_run(sysargv)
 
@@ -109,11 +121,12 @@ def freqtrade_backtest(db, json_payload: dict):
     
     create_performance(
         db,
-        timerange[:-1],
+        start_at,
+        end_at,
         breakdown,
         json.dumps(backtest_result),
         channel,
-        hyper_id
+        hyperopt.id
     )
     
     

@@ -23,5 +23,6 @@ setup(
         "pyyaml",
         "sqlalchemy",
         "freqtrade",
+        'dateparser'
     ]
 )
