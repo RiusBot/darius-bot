@@ -5,14 +5,11 @@ name = "pypi"
 
 [packages]
 bot_executor = {path = "./bot_executor/src", editable = true}
-Telethon = "*"
-PyYAML = "*"
-SQLAlchemy = "*"
-requests = "*"
+bot_optimizer = {path = "./bot_optimizer/src", editable = true}
 
 [dev-packages]
 "testfixtures" = "*"
-# black = "*"
+black = "*"
 "flake8" = "*"
 colorama = "*"
 gunicorn = "*"
@@ -24,4 +21,4 @@ pytest-custom-exit-code = '*'
 
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"

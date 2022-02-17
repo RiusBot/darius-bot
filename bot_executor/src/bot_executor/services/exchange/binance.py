@@ -223,7 +223,7 @@ class BinanceClient(Base):
             if self.take_profit_type != "TRAILING":
                 tp_params = {
                     "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -248,7 +248,7 @@ class BinanceClient(Base):
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET"),
+                    "closePosition": (sl_order_type=="STOP_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -337,7 +337,7 @@ class BinanceClient(Base):
             if self.take_profit_type != "TRAILING":
                 tp_params = {
                     "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
@@ -362,7 +362,7 @@ class BinanceClient(Base):
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET"),
+                    "closePosition": (sl_order_type=="STOP_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }

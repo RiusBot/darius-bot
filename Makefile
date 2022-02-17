@@ -150,6 +150,13 @@ start-executor-local:
 			--workers 1 \
 			--threads 1 \
 			--timeout 900
+            
+start-optimizer-local:
+	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=local gunicorn bot_optimizer.flask_app:app \
+			--bind :8000 \
+			--workers 1 \
+			--threads 1 \
+			--timeout 900
 
 
 
@@ -160,12 +167,27 @@ start-executor-local:
 set-project:
 	gcloud config set project $(PROJECT_ID)
 
-build-bot-executor:
+build-bot-executor: set-project
 	gcloud builds submit --config bot_executor/$(CLOUDBUILD)
 
-deploy-bot-executor:
+deploy-bot-executor: set-project
 	gcloud beta run deploy bot-executor \
 			--image gcr.io/$(PROJECT_ID)/bot-executor \
+			--region asia-east1 \
+			--platform managed \
+			--cpu 1 \
+			--concurrency 1 \
+			--timeout 2m \
+			--memory 1Gi \
+			--max-instances 2 \
+			--update-env-vars='project_id=$(PROJECT_ID)'
+
+build-bot-optimizer: set-project
+	gcloud builds submit --config bot_optimizer/$(CLOUDBUILD)
+
+deploy-bot-optimizer: set-project
+	gcloud beta run deploy bot-optimizer \
+			--image gcr.io/$(PROJECT_ID)/bot-optimizer \
 			--region asia-east1 \
 			--platform managed \
 			--cpu 1 \

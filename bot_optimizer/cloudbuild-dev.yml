@@ -1,0 +1,10 @@
+steps:
+# Build the container image
+- name: "gcr.io/cloud-builders/docker"
+  args:
+  - build
+  - "--tag=gcr.io/darius-332003/bot-optimizer"
+  - "--file=./bot_optimizer/Dockerfile"
+  - .
+images:
+- "gcr.io/darius-332003/bot-optimizer"
