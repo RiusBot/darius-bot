@@ -41,7 +41,7 @@ class ScalpParser(BaseParser):
             try:
                 key, value = line.split(':')
                 value = value.replace('/', ' ')
-                value = [float(i) for i in value.split(' ') if (i and valid(entry, float(i)))]
+                value = [float(i) for i in value.split(' ') if (i and self.valid(entry, float(i)))]
 
                 if "target" in key.lower() or "tp" in key.lower():
                     take_profit = func(value)

@@ -18,8 +18,7 @@ class Performance(db.Model, serialize):
     # updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
     start_at = db.Column(db.DateTime)
     end_at = db.Column(db.DateTime)
-    breakdown = db.Column(db.String(8), nullable=False)
-    result = db.Column(db.String(4096), nullable=False)
+    result = db.Column(db.Text, nullable=False)
     channel = db.Column(db.String(32), nullable=False)
     hyper_id = db.Column(db.Integer, db.ForeignKey('hyperopt.id'), nullable=False)
 
@@ -40,3 +39,15 @@ class Hyperopt(db.Model, serialize):
 
     def __repr__(self):
         return f'<Hyperopt {self.id}>'
+
+
+class Message(db.Model, serialize):
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    symbol = db.Column(db.String(32), nullable=False)
+    action = db.Column(db.String(32), nullable=False)
+    channel = db.Column(db.String(32), nullable=False)
+    message_timestamp = db.Column(db.DateTime, nullable=False)
+
+    def __repr__(self):
+        return f'<Message {self.id}>'
