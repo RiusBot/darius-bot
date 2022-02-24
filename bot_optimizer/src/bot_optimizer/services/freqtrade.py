@@ -11,7 +11,7 @@ from collections import defaultdict
 from freqtrade.commands import Arguments
 
 from bot_optimizer import config
-from bot_optimizer.strategies import riusbot
+from bot_optimizer.strategies import riusbot, riusbot_sell
 from bot_optimizer.adapters.mysql.utils import create_performance, create_hyperopt, get_hyperopt, get_message, get_channel
 
 
@@ -68,10 +68,13 @@ def freqtrade_init(
     freqtrade_create_config(params, message, pairs)
     freqtrade_download_data(exchange, timeframe, timerange)
     shutil.copyfile(riusbot.__file__, "user_data/strategies/riusbot.py")
+    shutil.copyfile(riusbot_sell.__file__, "user_data/strategies/riusbot_sell.py")
 
 
 def freqtrade_create_userdir():
     logging.info("create userdir")
+    if os.path.isdir("user_data"):
+        shutil.rmtree("user_data")
     sysargv = "create-userdir --userdir user_data"
     freqtrade_run(sysargv)
     
@@ -88,9 +91,15 @@ def freqtrade_create_config(params, message, pairs):
 
 
 def freqtrade_download_data(exchange: str, timeframe: str, timerange: str):
-    logging.info("download data")
-    sysargv = f"download-data --exchange {exchange} --timeframe {timeframe} --timerange {timerange}"
-    freqtrade_run(sysargv)
+    for _ in range(3):
+        try:
+            logging.info("download data")
+            sysargv = f"download-data --exchange {exchange} --timeframe {timeframe} --timerange {timerange}"
+            freqtrade_run(sysargv)
+            return
+        except Exception as e:
+            logging.error(f"download data failed. {e}")
+            logging.info(f"Retry {_}")
 
 
 def process_hyperopt_timerange(timerange: str, days: int):
@@ -153,7 +162,6 @@ def freqtrade_hyperopt(db, json_payload: dict):
                     logging.error(f"{channel} {start_at}-{end_at} {e}")
                 else:
                     logging.exception("")
-
     return output
 
 
@@ -163,37 +171,48 @@ def freqtrade_backtest(db, json_payload: dict):
     exchange = json_payload.get('exchange', 'binance')
     timeframe = json_payload.get('timeframe', '1h')
     timerange, start_at, end_at = process_backtest_timerange(json_payload['timerange'])
-    output = {}
+    output = defaultdict(dict)
+    
+    # remove hyperopt params file
+    if os.path.isfile("user_data/strategies/riusbot.json"):
+        os.remove("user_data/strategies/riusbot.json")
+    if os.path.isfile("user_data/strategies/riusbot_sell.json"):
+        os.remove("user_data/strategies/riusbot_sell.json")
     
     for channel in get_channel(db):
-        try:
 
-            hyperopt = get_hyperopt(db, channel, 'OnlyProfitHyperOptLoss', start_at)
-            params = json.loads(hyperopt.to_dict()['params'])
-            freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange)
+        for loss in ["SharpeHyperOptLoss"]:  # config.Hyperopt_Loss:
 
-            sysargv = f"backtesting --strategy riusbot --timeframe {timeframe} --timerange {timerange} --export none"
-            freqtrade_run(sysargv)
+            try:
+                backtest_result = None
+                hyperopt = get_hyperopt(db, channel, loss, start_at)
+                params = json.loads(hyperopt.to_dict()['params'])
+                freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange, params)
 
-            with open("user_data/backtest_results/.last_result.json", "r") as f:
-                last_result_path = json.load(f)['latest_backtest']
-            with open(os.path.join("user_data/backtest_results", last_result_path), "r") as f:
-                backtest_result = json.load(f)
+                sysargv = f"backtesting --strategy-list riusbot riusbot_sell --timeframe {timeframe} --timerange {timerange}"
+                freqtrade_run(sysargv)
+                with open("user_data/backtest_results/.last_result.json", "r") as f:
+                    last_result_path = json.load(f)['latest_backtest']
+                with open(os.path.join("user_data/backtest_results", last_result_path), "r") as f:
+                    backtest_result = json.load(f)
 
-            create_performance(
-                db,
-                start_at,
-                end_at,
-                json.dumps(backtest_result),
-                channel,
-                hyperopt.id
-            )
-            output[channel] = backtest_result
-        except Exception as e:
-            if "Insufficient trade message" in str(e) or 'optimized config' in str(e):
-                logging.error(f"{channel} {start_at}-{end_at} {e}")
-            else:
-                logging.exception("")
+                create_performance(
+                    db,
+                    start_at,
+                    end_at,
+                    json.dumps(backtest_result),
+                    channel,
+                    hyperopt
+                )
+                output[channel][loss] = backtest_result
+
+            except Exception as e:
+                if "Insufficient trade message" in str(e) or 'optimized config' in str(e):
+                    logging.error(f"{channel} {start_at}-{end_at} {e}")
+                else:
+                    logging.exception("")
+                    import pdb
+                    pdb.set_trace()
 
     return output
     

@@ -1,8 +1,9 @@
+import json
 import logging
 from datetime import datetime
 
 
-def create_performance(db, start_at: datetime, end_at: datetime, result: str, channel: str, hyper_id: int):
+def create_performance(db, start_at: datetime, end_at: datetime, result: str, channel: str, hyperopt):
     from bot_optimizer.adapters.mysql.model import Performance
     performance = Performance.query.filter_by(
         start_at=start_at,
@@ -11,22 +12,22 @@ def create_performance(db, start_at: datetime, end_at: datetime, result: str, ch
     ).first()
 
     if performance is None:
-        logging.info(f"create performance {performance}")
         performance = Performance(
             start_at=start_at,
             end_at=end_at,
             result=result,
             channel=channel,
-            hyper_id=hyper_id
+            hyperopt=hyperopt
         )
-    else:
+        db.session.add(performance)
+        db.session.commit()
         logging.info(f"update performance {performance}")
-        performance.hyper_id = hyper_id
+    else:
+        performance.hyperopt = hyperopt
         performance.result = result
-
-    db.session.add(performance)
-    db.session.commit()
-
+        db.session.add(performance)
+        db.session.commit()
+        logging.info(f"create performance {performance}")
 
 
 def create_hyperopt(db, params: str, channel: str, days: int, loss: str, start_at: datetime, end_at: datetime):
@@ -39,7 +40,6 @@ def create_hyperopt(db, params: str, channel: str, days: int, loss: str, start_a
     ).first()
 
     if hyperopt is None:
-        logging.info(f"create hyperopt {hyperopt}")
         hyperopt = Hyperopt(
             params=params,
             channel=channel,
@@ -48,13 +48,15 @@ def create_hyperopt(db, params: str, channel: str, days: int, loss: str, start_a
             start_at=start_at,
             end_at=end_at
         )
+        db.session.add(hyperopt)
+        db.session.commit()
+        logging.info(f"create hyperopt {hyperopt}")
     else:
-        logging.info(f"update hyperopt {hyperopt}")
         hyperopt.params = params
         hyperopt.days = days
-
-    db.session.add(hyperopt)
-    db.session.commit()
+        db.session.add(hyperopt)
+        db.session.commit()
+        logging.info(f"update instead of create")
     
 
 
@@ -70,7 +72,8 @@ def get_hyperopt(db, channel: str, loss: str, start_at: datetime):
     ).first()
 
     if hyperopt is None:
-        raise Exception(f"{channel} has no {loss} optimized config.")
+        # hyperopt = Hyperopt.query.get(155)  # default
+        hyperopt = Hyperopt.query.filter(Hyperopt.loss == 'default').first()
 
     logging.info(f"Get hyperopt {hyperopt}")
     return hyperopt

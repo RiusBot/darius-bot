@@ -73,7 +73,7 @@ def get_db_uri():
 
 
 Hyperopt_Loss = [
-    # 'OnlyProfitHyperOptLoss',
+    'OnlyProfitHyperOptLoss',
     'SharpeHyperOptLoss',
     'MaxDrawDownHyperOptLoss'
 ]

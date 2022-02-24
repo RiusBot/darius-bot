@@ -20,7 +20,7 @@ import pandas_ta as pta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 
-class riusbot(IStrategy):
+class riusbot_sell(IStrategy):
     """
     This is a strategy template to get you started.
     More information in https://www.freqtrade.io/en/latest/strategy-customization/
@@ -375,7 +375,7 @@ class riusbot(IStrategy):
         
         pair = metadata["pair"].replace("/USDT", "")
         for i in self.my_trade[pair]:
-            if i["action"] == "BUY":
+            if i["action"] == "SELL":
                 ts = pd.Timestamp(i["timestamp"], unit='s').tz_localize('utc')
                 idx = dataframe.date.searchsorted(ts)
                 dataframe.loc[idx-1, "buy"] = 1
@@ -402,7 +402,7 @@ class riusbot(IStrategy):
         
         # pair = metadata["pair"].replace("/USDT", "")
         # for i in self.my_trade[pair]:
-        #     if i["action"] == "SELL":
+        #     if i["action"] == "BUY":
         #         ts = pd.Timestamp(i["timestamp"], unit='s').tz_localize('utc')
         #         idx = dataframe.date.searchsorted(ts)
         #         dataframe.loc[idx, "sell"] = 1
