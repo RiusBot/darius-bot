@@ -91,7 +91,7 @@ def main_validator(f):
             "order_type": {"LIMIT", "MARKET"},
             "stop_loss_type": {"LIMIT", "MARKET"},
             "take_profit_type": {"LIMIT", "MARKET"},
-            "exchange": {"binance", "ftx"}
+            "exchange": {"binance", "ftx", "ftxus"}
         }
         data = request.get_json()
 
@@ -131,7 +131,7 @@ def clean_validator(f):
             "order_type": {"LIMIT", "MARKET"},
             "stop_loss_type": {"LIMIT", "MARKET", "TRAILING"},
             "take_profit_type": {"LIMIT", "MARKET", "TRAILING"},
-            "exchange": {"binance", "ftx", "ftxus}
+            "exchange": {"binance", "ftx", "ftxus"}
         }
         data = request.get_json()
 
