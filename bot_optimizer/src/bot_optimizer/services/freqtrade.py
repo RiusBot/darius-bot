@@ -15,9 +15,6 @@ from bot_optimizer.strategies import riusbot, riusbot_sell
 from bot_optimizer.adapters.mysql.utils import create_performance, create_hyperopt, get_hyperopt, get_message, get_channel
 
 
-logging.getLogger('freqtrade').setLevel(logging.ERROR)
-
-
 def freqtrade_run(sysargv: str):
     arguments = Arguments(sysargv.split(' '))
     args = arguments.get_parsed_arg()
@@ -134,7 +131,7 @@ def freqtrade_hyperopt(db, json_payload: dict):
 
             try:
                 freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange)
-                sysargv = f"hyperopt --strategy riusbot --timeframe {timeframe} --timerange {timerange} --hyperopt-loss {loss} --spaces roi stoploss -e 30"
+                sysargv = f"hyperopt --strategy riusbot --timeframe {timeframe} --timerange {timerange} --hyperopt-loss {loss} --spaces roi stoploss -e 20"
                 freqtrade_run(sysargv)
 
                 with open("user_data/strategies/riusbot.json", "r") as f:
@@ -211,8 +208,6 @@ def freqtrade_backtest(db, json_payload: dict):
                     logging.error(f"{channel} {start_at}-{end_at} {e}")
                 else:
                     logging.exception("")
-                    import pdb
-                    pdb.set_trace()
 
     return output
     

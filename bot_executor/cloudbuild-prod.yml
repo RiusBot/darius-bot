@@ -1,0 +1,10 @@
+steps:
+# Build the container image
+- name: "gcr.io/cloud-builders/docker"
+  args:
+  - build
+  - "--tag=gcr.io/darius-prod/bot-executor"
+  - "--file=./bot_executor/Dockerfile"
+  - .
+images:
+- "gcr.io/darius-prod/bot-executor"

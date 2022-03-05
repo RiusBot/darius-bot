@@ -89,8 +89,8 @@ def main_validator(f):
         enums = {
             "target": {"SPOT", "MARGIN", "FUTURE"},
             "order_type": {"LIMIT", "MARKET"},
-            "stop_loss_type": {"LIMIT", "MARKET"},
-            "take_profit_type": {"LIMIT", "MARKET"},
+            "stop_loss_type": {"LIMIT", "MARKET", "TRAILING"},
+            "take_profit_type": {"LIMIT", "MARKET", "TRAILING"},
             "exchange": {"binance", "ftx", "ftxus"}
         }
         data = request.get_json()

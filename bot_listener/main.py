@@ -53,11 +53,13 @@ async def send_to_execute(info: dict):
     for symbol in symbol_list:
         info["symbol"] = symbol.strip() if isinstance(symbol, str) else symbol
         logging.info(f"{symbol} {action} send to execute.")
-        response = requests.post(config["backend_endpoint"], json=info, headers=headers)
-        try:
-            logging.info(str(response) + " " + json.dumps(response.json()))
-        except Exception:
-            logging.info(str(response) + " " + response.text)
+        
+        for endpoint in config["backend_endpoint"]:
+            response = requests.post(endpoint, json=info, headers=headers)
+            try:
+                logging.info(str(response) + " " + json.dumps(response.json()))
+            except Exception:
+                logging.info(str(response) + " " + response.text)
         await asyncio.sleep(60)
 
 

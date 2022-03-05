@@ -103,5 +103,5 @@ def get_message(db, channel: str, start_at: datetime, end_at: datetime):
         message["message_timestamp"] = message["message_timestamp"].timestamp()
         message_list.append(message)
 
-    logging.info(f"Get {len(message_list)} message")
+    logging.info(f"Get {len(message_list)} message from channel {channel}")
     return message_list
