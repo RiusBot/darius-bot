@@ -369,6 +369,32 @@ class FtxClient(Base):
         #         if config["minimum_volume"] > volume:
         #             return True
 
+    def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
+        symbol = self.make_symbol(symbol)
+        open_conditional_order_list = self.exchange.private_get_conditional_orders({'market': symbol})
+
+        if tp_order:
+            closed = True
+            for order in open_conditional_order_list:
+                if order['id'] == tp_order:
+                    closed = False
+                    break
+
+            if closed:
+                self.exchange.cancelOrder(sl_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                return "TP"
+
+        if sl_order:
+            closed = True
+            for order in open_conditional_order_list:
+                if order['id'] == sl_order:
+                    closed = False
+                    break
+
+            if closed:
+                self.exchange.cancelOrder(tp_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                return "SL"
+
     def make_order(self, order_info: dict):
         logging.info("Start making order.")
         symbol = self.make_symbol(order_info["symbol"])

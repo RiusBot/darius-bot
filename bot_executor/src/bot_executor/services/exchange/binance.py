@@ -472,6 +472,21 @@ class BinanceClient(Base):
         #         if config["minimum_volume"] > volume:
         #             return True
 
+    def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
+        symbol = self.make_symbol(symbol)
+
+        if tp_order:
+            tp_order_info = self.exchange.fetchOrder(tp_order, symbol)
+            if tp_order_info["status"] == "closed":
+                self.exchange.cancelOrder(sl_order, symbol)
+                return "TP"
+
+        if sl_order:
+            sl_order_info = self.exchange.fetchOrder(sl_order, symbol)
+            if sl_order_info["status"] == "closed":
+                self.exchange.cancelOrder(tp_order, symbol)
+                return "SL"
+
     def make_order(self, order_info: dict):
         logging.info("Start making order.")
         symbol = self.make_symbol(order_info["symbol"])

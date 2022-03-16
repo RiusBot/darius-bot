@@ -78,9 +78,9 @@ with telegram_client:
 async def handler(event):
     if event.chat is not None and hasattr(event.chat, "title"):
         if "Cryptophet Trading Room" in event.chat.title:
-            logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
             try:
                 if isinstance(json.loads(event.text), dict):
+                    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
                     info = parse.CourageParser().parse(event)
                     logging.info(json.dumps(info, indent=4))
                     await send_to_execute(info)
