@@ -4,6 +4,7 @@ from .whalehunter import WhalehunterParser
 from .scalp import ScalpParser
 from .vegas import VegasParser
 from .justin import JustinParser
+from .courage import CourageParser
 
 __all__ = [
     "PerpetualParser",
@@ -11,5 +12,6 @@ __all__ = [
     "WhalehunterParser",
     "ScalpParser",
     "VegasParser",
-    "JustinParser"
+    "JustinParser",
+    "CourageParser"
 ]

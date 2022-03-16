@@ -101,7 +101,7 @@ class FtxClient(Base):
         return order
 
     def create_limit_buy(self, symbol: str):
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 1.01
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
@@ -133,7 +133,7 @@ class FtxClient(Base):
         return order
 
     def create_limit_sell(self, symbol: str):
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 0.99
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
@@ -192,6 +192,7 @@ class FtxClient(Base):
             if self.take_profit_type == "LIMIT":
                 params["orderPrice"] = tp_price
         else:
+            params["type"] = "trailingStop"
             params["trailValue"] = take_profit
         tp_order = self.exchange.private_post_conditional_orders(
             params=params
@@ -209,6 +210,7 @@ class FtxClient(Base):
             if self.stop_loss_type == "LIMIT":
                 params["orderPrice"] = sl_price
         else:
+            params["type"] = "trailingStop"
             params["trailValue"] = stop_loss
         sl_order = self.exchange.private_post_conditional_orders(
             params=params
@@ -258,6 +260,7 @@ class FtxClient(Base):
             if self.take_profit_type == "LIMIT":
                 params["orderPrice"] = tp_price
         else:
+            params["type"] = "trailingStop"
             params["trailValue"] = take_profit
         tp_order = self.exchange.private_post_conditional_orders(
             params=params
@@ -275,6 +278,7 @@ class FtxClient(Base):
             if self.stop_loss_type == "LIMIT":
                 params["orderPrice"] = sl_price
         else:
+            params["type"] = "trailingStop"
             params["trailValue"] = stop_loss
         sl_order = self.exchange.private_post_conditional_orders(
             params=params

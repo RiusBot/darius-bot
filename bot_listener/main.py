@@ -18,10 +18,12 @@ justin_channel = None
 whale_channel = None
 scalp_channel = None
 vegas_channel = None
+courage_channel = None
+logging.info(config["backend_endpoint"])
 
 
 async def get_channels():
-    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel
+    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel
     logging.info("Get channel")
     test_channel = await telegram_client.get_entity('test')
     rose_channel = await telegram_client.get_entity('🌹 Rose Premium Signal For Bot')
@@ -31,8 +33,12 @@ async def get_channels():
     whale_channel = await telegram_client.get_entity('whalehunter🐳')
     scalp_channel = await telegram_client.get_entity('Daily Scalping Signal')
     vegas_channel = await telegram_client.get_entity('Vegas 4hr Indicator')
-    print(scalp_channel, justin_channel, whale_channel)
-    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel
+    courage_channel = await telegram_client.get_entity('Cryptophet Trading Room')
+    print(courage_channel)
+    
+    await telegram_client.send_message(entity=test_channel, message='345')
+    
+    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel
 
 
 async def get_IDs():
@@ -68,21 +74,31 @@ with telegram_client:
     telegram_client.loop.run_until_complete(get_channels())
 
 
-# @telegram_client.on(events.NewMessage(from_users=test_channel, forwards=True))
+@telegram_client.on(events.NewMessage())
+async def handler(event):
+    if event.chat is not None and hasattr(event.chat, "title"):
+        if "Cryptophet Trading Room" in event.chat.title:
+            logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+            try:
+                if isinstance(json.loads(event.text), dict):
+                    info = parse.CourageParser().parse(event)
+                    logging.info(json.dumps(info, indent=4))
+                    await send_to_execute(info)
+            except Exception:
+                pass
+                # logging.exception("")
+
+
+# @telegram_client.on(events.NewMessage(from_users=test_channel, forwards=False))
 # async def test_handler(event):
-#     buy_info = parse.JustinParser("BUY").parse(event)
-#     sell_info = parse.JustinParser("SELL").parse(event)
-
-#     buy = Counter(buy_info['symbol'])
-#     sell = Counter(sell_info['symbol'])
-#     buy_info['symbol'] = [j for i, cnt in (buy - sell).items() for j in [i]*cnt]
-#     sell_info['symbol'] = [j for i, cnt in (sell - buy).items() for j in [i]*cnt]
-
-#     logging.info(json.dumps(buy_info, indent=4))
-#     #await send_to_execute(buy_info)
-
-#     logging.info(json.dumps(sell_info, indent=4))
-#     await send_to_execute(sell_info)
+#     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+#     try:
+#         json.loads(event.text)
+#         info = parse.CourageParser().parse(event)
+#         logging.info(json.dumps(info, indent=4))
+#         # await send_to_execute(info)
+#     except Exception:
+#         pass
 
 
 @telegram_client.on(events.NewMessage(from_users=vegas_channel, forwards=False))
@@ -125,6 +141,18 @@ async def perpetual_handler(event):
     info = parse.PerpetualParser().parse(event)
     logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
+
+
+@telegram_client.on(events.NewMessage(from_users=courage_channel, forwards=False))
+async def courage_handler(event):
+    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    try:
+        if isinstance(json.loads(event.text), dict):
+            info = parse.CourageParser().parse(event)
+            logging.info(json.dumps(info, indent=4))
+            await send_to_execute(info)
+    except Exception:
+        logging.exception("")
 
 
 @telegram_client.on(events.NewMessage(from_users=whale_channel, forwards=False))

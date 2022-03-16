@@ -76,7 +76,7 @@ class BinanceClient(Base):
 
     def get_price(self, symbol: str) -> float:
         symbol = symbol.replace("/", "")
-        return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"]) * 1.01
+        return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"])
 
     def get_balance(self):
         balance = 0
@@ -130,7 +130,7 @@ class BinanceClient(Base):
         return order
 
     def create_limit_buy(self, symbol: str):
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 1.01
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
@@ -163,7 +163,7 @@ class BinanceClient(Base):
         return order
 
     def create_limit_sell(self, symbol: str):
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 0.99
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
@@ -229,7 +229,7 @@ class BinanceClient(Base):
                 }
             else:
                 tp_params = {
-                    "callbackRate": take_profit * 100,
+                    "callbackRate": min(max(take_profit * 100, 0.1), 5),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -254,7 +254,7 @@ class BinanceClient(Base):
                 }
             else:
                 sl_params = {
-                    "callbackRate": stop_loss * 100,
+                    "callbackRate": min(max(stop_loss * 100, 0.1), 5),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -396,6 +396,8 @@ class BinanceClient(Base):
         return tp_order, sl_order
 
     def validate_symbol(self, symbol: str):
+        if not self.markets:
+            self.markets = self.exchange.loadMarkets(True)
         if symbol not in self.markets:
             error_msg = f"{symbol} invalid symbol"
             logging.error(error_msg)
