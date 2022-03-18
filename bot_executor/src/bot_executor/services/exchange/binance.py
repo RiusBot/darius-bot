@@ -44,6 +44,15 @@ class BinanceClient(Base):
 
         self.markets = self.exchange.loadMarkets(True)
     
+    def market_postprocess(self):
+        if self.target.lower() == "future":
+            tmp = {
+                'SHIB/USDT': markets["1000SHIB/USDT"],
+                'XEC/USDT': markets["1000XEC/USDT"],
+                'BTTC/USDT': markets['1000BTTC/USDT']
+            }
+            self.markets.update(tmp)
+
     def get_position_param(self, side: str):
         if self.target == "FUTURE":
             return {"positionSide": self.get_position_side(side)}
@@ -396,8 +405,6 @@ class BinanceClient(Base):
         return tp_order, sl_order
 
     def validate_symbol(self, symbol: str):
-        if not self.markets:
-            self.markets = self.exchange.loadMarkets(True)
         if symbol not in self.markets:
             error_msg = f"{symbol} invalid symbol"
             logging.error(error_msg)
