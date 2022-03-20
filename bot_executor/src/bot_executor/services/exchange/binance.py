@@ -21,6 +21,7 @@ class BinanceClient(Base):
         self.tp = config.get("take_profit")
         self.margin = config.get("margin")
         self.no_duplicate = config["duplicate"]
+        self.use_all_collateral = config["use_all_collateral"]
 
         options = {
             "defaultType": self.target.lower(),
@@ -41,7 +42,7 @@ class BinanceClient(Base):
         except Exception as e:
             logging.error(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
             raise e
-
+					  
         self.markets = self.exchange.loadMarkets(True)
     
     def get_position_param(self, side: str):
@@ -115,9 +116,20 @@ class BinanceClient(Base):
         logging.info(f"Margin level/ratio: {margin}")
         return margin
 
+    def percentage_quantity(self):
+        if self.use_all_collateral:
+            balance = self.get_balance()
+            quantity = balance
+        else:
+            quantity = self.quantity
+            
+        return float(quantity)
+            
+        
     def create_market_buy(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -130,8 +142,9 @@ class BinanceClient(Base):
         return order
 
     def create_limit_buy(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -149,8 +162,9 @@ class BinanceClient(Base):
         return order
 
     def create_market_sell(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -163,8 +177,9 @@ class BinanceClient(Base):
         return order
 
     def create_limit_sell(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -223,7 +238,7 @@ class BinanceClient(Base):
             if self.take_profit_type != "TRAILING":
                 tp_params = {
                     "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET" and not self.get_position_mode()),
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -248,7 +263,7 @@ class BinanceClient(Base):
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET" and not self.get_position_mode()),
+                    "closePosition": (sl_order_type=="STOP_MARKET"),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -337,7 +352,7 @@ class BinanceClient(Base):
             if self.take_profit_type != "TRAILING":
                 tp_params = {
                     "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET" and not self.get_position_mode()),
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
@@ -362,7 +377,7 @@ class BinanceClient(Base):
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET" and not self.get_position_mode()),
+                    "closePosition": (sl_order_type=="STOP_MARKET"),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }

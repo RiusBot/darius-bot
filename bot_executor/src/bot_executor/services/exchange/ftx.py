@@ -21,6 +21,8 @@ class FtxClient(Base):
         self.tp = config.get("take_profit")
         self.margin = config.get("margin")
         self.no_duplicate = config["duplicate"]
+        self.use_all_collateral = config["use_all_collateral"]
+        self.only_usd = config["only_usd"]
         self.subaccount = config.get("subaccount")
 
         options = {
@@ -74,19 +76,33 @@ class FtxClient(Base):
 
     def get_balance(self):
         balance = 0
-        info = self.exchange.fetch_balance()["info"]
-        for coin in info["reuslt"]:
-            if coin['coin'] == "USD":
-                balance = coin["availableWithoutBorrow"]
+        info = self.exchange.fetch_balance()['info']
+        for coin in info['result']:
+            if self.only_usd == True and coin['coin'] == 'USD':
+                balance = coin['usdValue']
+            elif self.only_usd != True:
+                usdvalue = coin['usdValue']
+                balance += float(usdvalue)
         return float(balance)
 
     def get_margin(self, symbol: str) -> float:
         margin = self.exchange.private_get_account()["result"]["marginFraction"]
         return 999 if margin is None else float(margin)
 
+    def percentage_quantity(self):
+        quantity = 0
+        if self.use_all_collateral == True:
+            balance = self.get_balance()
+            quantity = balance
+        elif self.use_all_collateral != True:
+            quantity = self.quantity
+            
+        return float(quantity)
+
     def create_market_buy(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -101,8 +117,9 @@ class FtxClient(Base):
         return order
 
     def create_limit_buy(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -117,8 +134,9 @@ class FtxClient(Base):
         return order
 
     def create_market_sell(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -133,8 +151,9 @@ class FtxClient(Base):
         return order
 
     def create_limit_sell(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
