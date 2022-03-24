@@ -431,3 +431,8 @@ class FtxClient(Base):
             elif action == "SELL":
                 tp_order, sl_order = self.create_oco_short_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
         return tp_order, sl_order
+
+    def fetchOrder(self, order_id):
+        open_order = self.exchange.fetchOrder(order_id)
+        return open_order
+
