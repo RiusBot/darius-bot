@@ -193,7 +193,7 @@ class FtxClient(Base):
                 params["orderPrice"] = tp_price
         else:
             params["type"] = "trailingStop"
-            params["trailValue"] = take_profit
+            params["trailValue"] = price * (1 - take_profit) - price
         tp_order = self.exchange.private_post_conditional_orders(
             params=params
         )
@@ -211,7 +211,7 @@ class FtxClient(Base):
                 params["orderPrice"] = sl_price
         else:
             params["type"] = "trailingStop"
-            params["trailValue"] = stop_loss
+            params["trailValue"] = price * (1 + stop_loss) - price
         sl_order = self.exchange.private_post_conditional_orders(
             params=params
         )
