@@ -179,7 +179,7 @@ deploy-bot-executor: set-project
 			--concurrency 1 \
 			--timeout 2m \
 			--memory 1Gi \
-			--max-instances 2 \
+			--max-instances 3 \
 			--update-env-vars='project_id=$(PROJECT_ID)'
 
 build-bot-optimizer: set-project

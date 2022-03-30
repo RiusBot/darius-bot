@@ -193,7 +193,7 @@ class FtxClient(Base):
                 params["orderPrice"] = tp_price
         else:
             params["type"] = "trailingStop"
-            params["trailValue"] = take_profit
+            params["trailValue"] = price * (1 - take_profit) - price
         tp_order = self.exchange.private_post_conditional_orders(
             params=params
         )
@@ -211,7 +211,7 @@ class FtxClient(Base):
                 params["orderPrice"] = sl_price
         else:
             params["type"] = "trailingStop"
-            params["trailValue"] = stop_loss
+            params["trailValue"] = price * (1 + stop_loss) - price
         sl_order = self.exchange.private_post_conditional_orders(
             params=params
         )
@@ -371,7 +371,12 @@ class FtxClient(Base):
 
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         symbol = self.make_symbol(symbol)
-        open_conditional_order_list = self.exchange.private_get_conditional_orders({'market': symbol})
+        open_conditional_order_list = []
+        ftx_response = self.exchange.private_get_conditional_orders({'market': symbol})
+        if ftx_response.get('success'):
+            open_conditional_order_list = ftx_response['result']
+        else:
+            logging.error(f"{ftx_response}")
 
         if tp_order:
             closed = True

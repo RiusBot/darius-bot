@@ -34,7 +34,7 @@ async def get_channels():
     scalp_channel = await telegram_client.get_entity('Daily Scalping Signal')
     vegas_channel = await telegram_client.get_entity('Vegas 4hr Indicator')
     courage_channel = await telegram_client.get_entity('Cryptophet Trading Room')
-    print(courage_channel)
+    print(vegas_channel, courage_channel)
     
     await telegram_client.send_message(entity=test_channel, message='345')
     
