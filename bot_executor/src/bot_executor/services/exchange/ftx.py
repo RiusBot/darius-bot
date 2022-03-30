@@ -148,7 +148,7 @@ class FtxClient(Base):
             order["amount"] = float(order.get("filled", 0))
         return order
 
-    def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+    def create_oco_order(self, symbol: str, order_info: dict, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
         price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
@@ -194,9 +194,12 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = price * (1 - take_profit) - price
-        tp_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        try:
+            tp_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
+        except Exception as e:
+            logging.info("tp_order exception happened")
 
         params = {
             "market": symbol,
@@ -212,13 +215,30 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = price * (1 + stop_loss) - price
-        sl_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        #pdb.set_trace()
+        try:
+            sl_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
+        except Exception as e:
+            logging.info("sl_order exception happened")
+
+        if tp_order==None or sl_order==None: 
+             symbol = order_info["symbol"]
+
+             if tp_order:
+                     self.exchange.cancelOrder(tp_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                     print("clean tp order")
+
+             if sl_order:
+                     self.exchange.cancelOrder(sl_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                     print("clean sl order")
+
+             return tp_order, sl_order
 
         return tp_order.get("result"), sl_order.get("result")
 
-    def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+    def create_oco_short_order(self, symbol: str, order_info: dict,open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
         price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
@@ -262,9 +282,12 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = take_profit
-        tp_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        try:
+            tp_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
+        except Exception as e:
+            logging.info("tp_order exception happened")
 
         params = {
             "market": symbol,
@@ -280,9 +303,25 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = stop_loss
-        sl_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        try:
+            sl_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
+        except Exception as e:
+            logging.info("sl_order exception happened")
+
+        if tp_order==None or sl_order==None:
+             symbol = order_info["symbol"]
+
+             if tp_order:
+                     self.exchange.cancelOrder(tp_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                     print("clean tp order")
+
+             if sl_order:
+                     self.exchange.cancelOrder(sl_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                     print("clean sl order")
+
+             return tp_order, sl_order
 
         return tp_order.get("result"), sl_order.get("result")
 
@@ -432,9 +471,9 @@ class FtxClient(Base):
         sl_price = order_info.get("scalp_stop_loss")
         if (stop_loss and take_profit) or (tp_price and sl_price):
             if action == "BUY":
-                tp_order, sl_order = self.create_oco_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
+                tp_order, sl_order = self.create_oco_order(symbol, order_info, open_order, take_profit, stop_loss, tp_price, sl_price)
             elif action == "SELL":
-                tp_order, sl_order = self.create_oco_short_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
+                tp_order, sl_order = self.create_oco_short_order(symbol, order_info, open_order, take_profit, stop_loss, tp_price, sl_price)
         return tp_order, sl_order
 
     def fetchOrder(self, order_id):
