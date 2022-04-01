@@ -232,10 +232,11 @@ class BinanceClient(Base):
             if self.take_profit_type != "TRAILING":
                 tp_params = {
                     "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
+                if not self.get_position_mode():
+                    tp_params["closePosition"] = (tp_order_type=="TAKE_PROFIT_MARKET")
             else:
                 tp_params = {
                     "callbackRate": min(max(take_profit * 100, 0.1), 5),
@@ -257,10 +258,11 @@ class BinanceClient(Base):
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
+                if not self.get_position_mode():
+                    sl_params["closePosition"] = (sl_order_type=="STOP_MARKET")
             else:
                 sl_params = {
                     "callbackRate": min(max(stop_loss * 100, 0.1), 5),
@@ -346,10 +348,11 @@ class BinanceClient(Base):
             if self.take_profit_type != "TRAILING":
                 tp_params = {
                     "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
+                if not self.get_position_mode():
+                    tp_params["closePosition"] = (tp_order_type=="TAKE_PROFIT_MARKET")
             else:
                 tp_params = {
                     "callbackRate": take_profit * 100,
@@ -371,10 +374,11 @@ class BinanceClient(Base):
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
+                if not self.get_position_mode():
+                    sl_params["closePosition"] = (sl_order_type=="STOP_MARKET")
             else:
                 sl_params = {
                     "callbackRate": stop_loss * 100,
