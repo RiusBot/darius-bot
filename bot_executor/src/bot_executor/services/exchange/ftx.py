@@ -6,7 +6,7 @@ from typing import List, Dict, Tuple
 from .base import Base
 
 
-class FtxClient(Base):
+class BinanceClient(Base):
 
     def __init__(self, config: dict):
         self.config = config
@@ -21,7 +21,7 @@ class FtxClient(Base):
         self.tp = config.get("take_profit")
         self.margin = config.get("margin")
         self.no_duplicate = config["duplicate"]
-        self.subaccount = config.get("subaccount")
+        self.use_all_collateral = config["use_all_collateral"]
 
         options = {
             "defaultType": self.target.lower(),
@@ -29,80 +29,122 @@ class FtxClient(Base):
             "verbose": True
         }
         headers = {}
-        if self.subaccount:
-            headers = {
-                'FTX-SUBACCOUNT': self.subaccount
-            }
-            logging.info(f"headers: {headers}")
-        self.exchange = ccxt.ftx({
+        self.exchange = ccxt.binance({
             "enableRateLimit": True,
             "apiKey": config["api_key"],
             "secret": config["api_secret"],
             'options': options,
-            'headers': headers,
+            'headers': headers
         })
 
         try:
             self.exchange.check_required_credentials()
         except Exception as e:
-            logging.info(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
+            logging.error(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
             raise e
-
+					  
         self.markets = self.exchange.loadMarkets(True)
-        self.markets = {value.get('id', key): value for key, value in self.markets.items()}
-        self.exchange.markets = self.markets
+    
+    def get_position_param(self, side: str):
+        if self.target == "FUTURE":
+            return {"positionSide": self.get_position_side(side)}
+        else:
+            return {}
+    
+    def get_position_mode(self):
+        # true: hedge, false: one-way
+        return self.exchange.fapiPrivate_get_positionside_dual().get('dualSidePosition')
+    
+    def get_position_side(self, side: str):
+        if self.get_position_mode():
+            if side == "BUY":
+                return "LONG"
+            else:
+                return "SHORT"
+        else:
+            return "BOTH"
     
     def make_symbol(self, symbol: str):
-        if self.target != "FUTURE":
-            return f"{symbol}/USD"
-        else:
-            return f"{symbol}-PERP"
+        return f"{symbol}/USDT"
     
     def get_volume(self, symbol: str) -> float:
         try:
-            symbol = symbol.replace("USDT", "USD")
-            market = self.exchange.markets[symbol]
-            info = market["info"]
-            return float(info["volumeUsd24h"])
+            symbol = symbol.replace("/", "")
+            return float(self.exchange.fapiPublic_get_ticker_24hr({'symbol': symbol})["volume"])
         except Exception:
             logging.excpetion("")
             logging.error("get volume failed")
 
     def get_price(self, symbol: str) -> float:
-        symbol = symbol.replace("USDT", "USD")
-        return float(self.exchange.fetchTicker(symbol)['bid']) * 1.01
+        symbol = symbol.replace("/", "")
+        return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"]) * 1.01
 
     def get_balance(self):
         balance = 0
-        info = self.exchange.fetch_balance()["info"]
-        for coin in info["reuslt"]:
-            if coin['coin'] == "USD":
-                balance = coin["availableWithoutBorrow"]
+        if self.target == "SPOT":
+            assets = self.exchange.fetch_balance()["info"]["balances"]
+            for asset in assets:
+                if asset["asset"] == "USDT":
+                    balance = asset["free"]
+        elif self.target == "MARGIN":
+            assets = self.exchange.fetch_balance()["info"]["userAssets"]
+            for asset in assets:
+                if asset["asset"] == "USDT":
+                    balance = asset["free"]
+        elif self.target == "FUTURE":
+            balance = self.exchange.fetch_balance()["info"]['availableBalance']
+        logging.info(f"Balance remain: {balance}")
         return float(balance)
 
     def get_margin(self, symbol: str) -> float:
-        margin = self.exchange.private_get_account()["result"]["marginFraction"]
-        return 999 if margin is None else float(margin)
+        margin = None
+        if self.target == "SPOT":
+            margin = 999
+        elif self.target == "MARGIN":
+            info = self.exchange.fetch_balance()["info"]
+            margin = 999 if info["marginLevel"] is None else float(info["marginLevel"])
+        elif self.target == "FUTURE":
+            info = self.exchange.fetch_balance()
+            maintenance_margin = float(info["info"]["totalMaintMargin"])
+            margin_balance = float(info["info"]["totalMarginBalance"])
+            if margin_balance == 0:
+                marginRatio = 0
+            else:
+                marginRatio = maintenance_margin / margin_balance
+            margin = marginRatio
 
+        logging.info(f"Margin level/ratio: {margin}")
+        return margin
+
+    def percentage_quantity(self):
+        if self.use_all_collateral:
+            balance = self.get_balance()
+            quantity = balance
+        else:
+            quantity = self.quantity
+            
+        return float(quantity)
+            
+        
     def create_market_buy(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Market Buy {symbol}
-            Open price : {price}
+            price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createMarketBuyOrder(symbol, amount)
-        if order["price"] is None:
-            order["price"] = price
+        order = self.exchange.createMarketBuyOrder(symbol, amount, params=self.get_position_param("BUY"))
         logging.info(f"Open average price : {order['average']}")
         return order
 
     def create_limit_buy(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -110,31 +152,34 @@ class FtxClient(Base):
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params={'ioc': (self.target != "FUTURE")})
-        order["average"] = order.get("price", price)
+        params = self.get_position_param("BUY")
+        if self.target != "FUTURE":
+            params["timeInForce"] = "IOC"
+        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params=params)
+        order["average"] = float(order.get("price", price))
         if self.target != "FUTURE":
             order["amount"] = float(order.get("filled", 0))
         return order
 
     def create_market_sell(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
             Market Sell {symbol}
-            Open price : {price}
             Amount : {amount}
+            Price: {price}
         """)
-        order = self.exchange.createMarketSellOrder(symbol, amount)
-        if order["price"] is None:
-            order["price"] = price
+        order = self.exchange.createMarketSellOrder(symbol, amount, params=self.get_position_param("SELL"))
         logging.info(f"Sell average price : {order['average']}")
         return order
 
     def create_limit_sell(self, symbol: str):
+        quantity = self.percentage_quantity()
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        amount = quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         logging.info(f"""
@@ -142,22 +187,19 @@ class FtxClient(Base):
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitSellOrder(symbol, amount, price, params={'ioc': (self.target != "FUTURE")})
-        order["average"] = order.get("price", price)
+        params = self.get_position_param("SELL")
+        if self.target != "FUTURE":
+            params["timeInForce"] = "IOC"
+        order = self.exchange.createLimitSellOrder(symbol, amount, price, params=params)
+        order["average"] = float(order.get("price", price))
         if self.target != "FUTURE":
             order["amount"] = float(order.get("filled", 0))
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
-        price = float(open_order["price"])
-        open_order = self.exchange.fetchOrder(open_order["id"])
-        amount = float(open_order["amount"])
+        amount = float(open_order["amount"]) * 0.99
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if open_order.get("average") is not None:
-            price = float(open_order["average"])
-        elif open_order.get("price") is not None:
-            price = float(open_order["price"])
-
+        price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
         if tp_price is None:
             tp_price = price * (1 + take_profit)
         if sl_price is None:
@@ -171,6 +213,131 @@ class FtxClient(Base):
         sl_order = None
         logging.info(f"""
             Create OCO order
+            Amount: {amount}
+            Price: {price}
+            Stop loss: {sl_price},
+            Take profit : {tp_price}
+        """)
+        
+        if amount <= 0:
+            logging.info(f"amount {amount} <= 0")
+            return tp_order, sl_order
+
+        if self.target == "FUTURE":
+            tp_order_type = {
+                "MARKET": "TAKE_PROFIT_MARKET",
+                "LIMIT": "TAKE_PROFIT",
+                "TRAILING": "TRAILING_STOP_MARKET"
+            }.get(self.take_profit_type)
+            sl_order_type = {
+                "MARKET": "STOP_MARKET",
+                "LIMIT": "STOP",
+                "TRAILING": "TRAILING_STOP_MARKET"
+            }.get(self.stop_loss_type)
+
+            if self.take_profit_type != "TRAILING":
+                tp_params = {
+                    "stopPrice": tp_price,
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("SHORT")
+                }
+            else:
+                tp_params = {
+                    "callbackRate": take_profit * 100,
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("SHORT")
+                }
+                if not self.get_position_mode():
+                    tp_params["reduceOnly"] = True
+
+            tp_order = self.exchange.create_order(
+                symbol,
+                type=tp_order_type,
+                side="SELL",
+                price=tp_price,
+                amount=amount,
+                params=tp_params
+            )
+
+            if self.stop_loss_type != "TRAILING":
+                sl_params = {
+                    "stopPrice": sl_price,
+                    "closePosition": (sl_order_type=="STOP_MARKET"),
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("SHORT")
+                }
+            else:
+                sl_params = {
+                    "callbackRate": stop_loss * 100,
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("SHORT")
+                }
+                if not self.get_position_mode():
+                    sl_params["reduceOnly"] = True
+
+            sl_order = self.exchange.create_order(
+                symbol,
+                type=sl_order_type,
+                side="SELL",
+                amount=amount,
+                price=sl_price,
+                params=sl_params
+            )
+        elif self.target == "SPOT":
+            tp_order_type = "TAKE_PROFIT_LIMIT" if self.take_profit_type == "LIMIT" else "TAKE_PROFIT"
+            sl_order_type = "STOP_LOSS_LIMIT" if self.stop_loss_type == "LIMIT" else "STOP_LOSS"
+            oco_order = self.exchange.private_post_order_oco({
+                "symbol": symbol.replace("/", ""),
+                "side": "SELL",
+                "quantity": amount,
+                "price": tp_price,
+                "stopPrice": sl_price,
+                "stopLimitPrice": sl_price,
+                "stopLimitTimeInForce": "GTC"
+            })
+            tp_order, sl_order = self.process_oco_order(oco_order)
+        elif self.target == "MARGIN":
+            oco_order = self.exchange.sapi_post_margin_order_oco({
+                "symbol": symbol,
+                "side": "SELL",
+                "quantity": amount,
+                "price": tp_price,
+                "stopPrice": sl_price,
+                "stopLimitPrice": sl_price,
+                "stopLimitTimeInForce": "GTC"
+            })
+            tp_order, sl_order = self.process_oco_order(oco_order)
+        return tp_order, sl_order
+
+    def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+        amount = float(open_order["amount"]) * 0.99
+        amount = float(self.exchange.amount_to_precision(symbol, amount))
+        price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
+        if tp_price is None:
+            tp_price = price * (1 - take_profit)
+        if sl_price is None:
+            sl_price = price * (1 + stop_loss)
+
+        tp_price = max(price * 0.01, tp_price)
+        tp_price = float(self.exchange.price_to_precision(symbol, tp_price))
+        sl_price = float(self.exchange.price_to_precision(symbol, sl_price))
+
+        tp_order = None
+        sl_order = None
+        tp_order_type = {
+            "MARKET": "TAKE_PROFIT_MARKET",
+            "LIMIT": "TAKE_PROFIT",
+            "TRAILING": "TRAILING_STOP_MARKET"
+        }.get(self.take_profit_type)
+        sl_order_type = {
+            "MARKET": "STOP_MARKET",
+            "LIMIT": "STOP",
+            "TRAILING": "TRAILING_STOP_MARKET"
+        }.get(self.stop_loss_type)
+
+        logging.info(f"""
+            Create OCO short order
             Amount: {amount},
             Price: {price}
             Stop loss: {sl_price},
@@ -180,107 +347,58 @@ class FtxClient(Base):
         if amount <= 0:
             return tp_order, sl_order
 
-        params = {
-            "market": symbol,
-            "side": "sell",
-            "size": amount,
-            "type": "takeProfit",
-            "reduceOnly": True
-        }
-        if self.take_profit_type != "TRAILING":
-            params["triggerPrice"] = tp_price
-            if self.take_profit_type == "LIMIT":
-                params["orderPrice"] = tp_price
-        else:
-            params["trailValue"] = take_profit
-        tp_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        if self.target == "FUTURE":
 
-        params = {
-            "market": symbol,
-            "side": "sell",
-            "size": amount,
-            "type": "stop",
-            "reduceOnly": True
-        }
-        if self.stop_loss_type != "TRAILING":
-            params["triggerPrice"] = sl_price
-            if self.stop_loss_type == "LIMIT":
-                params["orderPrice"] = sl_price
-        else:
-            params["trailValue"] = stop_loss
-        sl_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+            if self.take_profit_type != "TRAILING":
+                tp_params = {
+                    "stopPrice": tp_price,
+                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET"),
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("BUY")
+                }
+            else:
+                tp_params = {
+                    "callbackRate": take_profit * 100,
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("BUY")
+                }
+                if not self.get_position_mode():
+                    tp_params["reduceOnly"] = True
 
-        return tp_order.get("result"), sl_order.get("result")
+            tp_order = self.exchange.create_order(
+                symbol,
+                type=tp_order_type,
+                side="BUY",
+                price=tp_price,
+                amount=amount,
+                params=tp_params
+            )
 
-    def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
-        price = float(open_order["price"])
-        open_order = self.exchange.fetchOrder(open_order["id"])
-        amount = float(open_order["amount"])
-        amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if open_order.get("average") is not None:
-            price = float(open_order["average"])
-        elif open_order.get("price") is not None:
-            price = float(open_order["price"])
+            if self.stop_loss_type != "TRAILING":
+                sl_params = {
+                    "stopPrice": sl_price,
+                    "closePosition": (sl_order_type=="STOP_MARKET"),
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("BUY")
+                }
+            else:
+                sl_params = {
+                    "callbackRate": stop_loss * 100,
+                    "priceProtect": True,
+                    "positionSide": self.get_position_side("BUY")
+                }
+                if not self.get_position_mode():
+                    sl_params["reduceOnly"] = True
 
-        if tp_price is None:
-            tp_price = price * (1 - take_profit)
-        if sl_price is None:
-            sl_price = price * (1 + stop_loss)
-        tp_price = max(price * 0.01, tp_price)
-        tp_price = float(self.exchange.price_to_precision(symbol, tp_price))
-        sl_price = float(self.exchange.price_to_precision(symbol, sl_price))
-
-        tp_order = None
-        sl_order = None
-        logging.info(f"""
-            Create OCO short order
-            Amount: {amount},
-            Price: {price}
-            Stop loss: {sl_price},
-            Take profit : {tp_price}
-        """)
-        if amount <= 0:
-            return tp_order, sl_order
-
-        params = {
-            "market": symbol,
-            "side": "buy",
-            "size": amount,
-            "type": "takeProfit",
-            "reduceOnly": True
-        }
-        if self.take_profit_type != "TRAILING":
-            params["triggerPrice"] = tp_price
-            if self.take_profit_type == "LIMIT":
-                params["orderPrice"] = tp_price
-        else:
-            params["trailValue"] = take_profit
-        tp_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
-
-        params = {
-            "market": symbol,
-            "side": "buy",
-            "size": amount,
-            "type": "stop",
-            "reduceOnly": True
-        }
-        if self.stop_loss_type != "TRAILING":
-            params["triggerPrice"] = sl_price
-            if self.stop_loss_type == "LIMIT":
-                params["orderPrice"] = sl_price
-        else:
-            params["trailValue"] = stop_loss
-        sl_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
-
-        return tp_order.get("result"), sl_order.get("result")
+            sl_order = self.exchange.create_order(
+                symbol,
+                type=sl_order_type,
+                side="BUY",
+                price=sl_price,
+                amount=amount,
+                params=sl_params
+            )
+        return tp_order, sl_order
 
     def process_oco_order(self, oco_order):
         tp_order = None
@@ -294,12 +412,9 @@ class FtxClient(Base):
 
     def validate_symbol(self, symbol: str):
         if symbol not in self.markets:
-            if symbol not in self.markets:
-                error_msg = f"{symbol} invalid symbol"
-                logging.error(error_msg)
-                logging.error(symbol)
-                logging.error(str(len(self.markets)))
-                raise Exception(error_msg)
+            error_msg = f"{symbol} invalid symbol"
+            logging.error(error_msg)
+            raise Exception(error_msg)
 
     def validate_action(self, action: str):
         if action not in ["BUY", "SELL"]:
@@ -311,9 +426,14 @@ class FtxClient(Base):
         margin = self.get_margin(symbol)
         logging.info(f"Current margin: {margin}, minimum margin: {self.margin}.")
         error_msg = "invalid margin"
-        if margin < self.margin:
-            logging.error(error_msg)
-            raise Exception(error_msg)
+        if self.target == "FUTURE":
+            if margin > self.margin:
+                logging.error(error_msg)
+                raise Exception(error_msg)
+        elif self.target == "MARGIN":
+            if margin < self.margin:
+                logging.error(error_msg)
+                raise Exception(error_msg)
 
     def validate_duplicate(self, symbol: str, action: str):
         if self.target == "SPOT" or self.target == "MARGIN":
@@ -330,15 +450,15 @@ class FtxClient(Base):
             logging.info("check future duplicate")
             positions = self.exchange.fetchPositions()
             for position in positions:
-                if "symbol" in position:
-                    position = position.get("info", {})
-                if position.get('future') == symbol and position.get('entryPrice') and position.get('side'):
-                    side = position['side']
+                if position.get('symbol') == symbol and position.get('side'):
+                    side = position.get('side')
                     logging.info(f"{symbol} has {side} position.")
-                    if side.upper() == action:
+                    side_map = {
+                        "BUY": ("BUY", "LONG"),
+                        "SELL": ("SHORT", "SELL")
+                    }
+                    if side.upper() in side_map[action]:
                         raise Exception("Position duplicate")
-
-        return False
 
     def validate_order(self, symbol: str, action: str):
 
