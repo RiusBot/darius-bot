@@ -43,15 +43,16 @@ class BinanceClient(Base):
             raise e
 
         self.markets = self.exchange.loadMarkets(True)
+        self.market_postprocess()
     
     def market_postprocess(self):
         if self.target.lower() == "future":
             tmp = {
-                'SHIB/USDT': markets["1000SHIB/USDT"],
-                'XEC/USDT': markets["1000XEC/USDT"],
-                'BTTC/USDT': markets['1000BTTC/USDT']
+                'SHIB/USDT': self.markets.get("1000SHIB/USDT"),
+                'XEC/USDT': self.markets.get("1000XEC/USDT"),
             }
             self.markets.update(tmp)
+            self.exchange.markets.update(tmp)
 
     def get_position_param(self, side: str):
         if self.target == "FUTURE":
