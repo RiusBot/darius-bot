@@ -19,11 +19,12 @@ whale_channel = None
 scalp_channel = None
 vegas_channel = None
 courage_channel = None
+moon_channel = None
 logging.info(config["backend_endpoint"])
 
 
 async def get_channels():
-    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel
+    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel
     logging.info("Get channel")
     test_channel = await telegram_client.get_entity('test')
     rose_channel = await telegram_client.get_entity('🌹 Rose Premium Signal For Bot')
@@ -34,11 +35,14 @@ async def get_channels():
     scalp_channel = await telegram_client.get_entity('Daily Scalping Signal')
     vegas_channel = await telegram_client.get_entity('Vegas 4hr Indicator')
     courage_channel = await telegram_client.get_entity('Cryptophet Trading Room')
-    print(vegas_channel, courage_channel)
+    moon_channel = await telegram_client.get_entity('Moon Indicator')
+    for i in [vegas_channel, courage_channel, perpetual_channel, moon_channel]:
+        print(i)
+        print()
     
     await telegram_client.send_message(entity=test_channel, message='345')
     
-    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel
+    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel
 
 
 async def get_IDs():
@@ -61,12 +65,17 @@ async def send_to_execute(info: dict):
         logging.info(f"{symbol} {action} send to execute.")
         
         for endpoint in config["backend_endpoint"]:
+            logging.info(f"{endpoint}")
             response = requests.post(endpoint, json=info, headers=headers)
             try:
                 logging.info(str(response) + " " + json.dumps(response.json()))
             except Exception:
                 logging.info(str(response) + " " + response.text)
-        await asyncio.sleep(60)
+            break
+        
+        await asyncio.sleep(5)
+        
+    logging.info("complete execute")
 
 
 with telegram_client:
@@ -99,6 +108,14 @@ async def handler(event):
 #         # await send_to_execute(info)
 #     except Exception:
 #         pass
+
+
+@telegram_client.on(events.NewMessage(from_users=moon_channel, forwards=False))
+async def moon_handler(event):
+    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    info = parse.MoonParser().parse(event)
+    logging.info(json.dumps(info, indent=4))
+    await send_to_execute(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=vegas_channel, forwards=False))
