@@ -53,6 +53,7 @@ class Message(db.Model, serialize):
     action = db.Column(db.String(32), nullable=False)
     channel = db.Column(db.String(32), nullable=False)
     message_timestamp = db.Column(db.DateTime, nullable=False)
+    is_del = db.Column(db.Boolean, nullable=False)
 
     def __repr__(self):
         return f'<Message {self.id}>'

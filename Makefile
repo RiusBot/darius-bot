@@ -167,6 +167,8 @@ start-optimizer-local:
 set-project:
 	gcloud config set project $(PROJECT_ID)
 
+bot-executor: build-bot-executor deploy-bot-executor
+
 build-bot-executor: set-project
 	gcloud builds submit --config bot_executor/$(CLOUDBUILD)
 
@@ -181,6 +183,8 @@ deploy-bot-executor: set-project
 			--memory 1Gi \
 			--max-instances 20 \
 			--update-env-vars='project_id=$(PROJECT_ID)'
+
+bot-optimizer: build-bot-optimizer deploy-bot-optimizer
 
 build-bot-optimizer: set-project
 	gcloud builds submit --config bot_optimizer/$(CLOUDBUILD) --timeout 60m

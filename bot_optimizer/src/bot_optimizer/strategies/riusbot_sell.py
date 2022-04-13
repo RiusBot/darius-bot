@@ -106,8 +106,8 @@ class riusbot_sell(IStrategy):
 
             if config.get('riusbot_params'):
                 params = config["riusbot_params"]
-                self.minimal_roi = {"0": params['take_profit']}
-                self.stoploss = -params['stop_loss']
+                self.minimal_roi = {"0": params['stop_loss']}
+                self.stoploss = -params['take_profit']
                 logging.info(f"load riusbot params {json.dumps(params)}")
 
         super().__init__(*args, **kwargs)
