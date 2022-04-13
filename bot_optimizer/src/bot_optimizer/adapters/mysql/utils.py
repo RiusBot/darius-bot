@@ -97,6 +97,7 @@ def get_message(db, channel: str, start_at: datetime, end_at: datetime):
         Message.channel == channel,
         Message.action.is_not(None),
         Message.symbol.is_not(None),
+        Message.is_del.is_not(True),
     ).all():
         message = message.to_dict()
         message.pop("created_at")
