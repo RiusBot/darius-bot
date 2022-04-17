@@ -77,21 +77,23 @@ def main_validator(f):
             "duplicate",
             "api_key",
             "api_secret",
+            "use_all_collateral",
+            "only_usd"
             # "scalp_entry",
             # "scalp_stop_loss",
             # "scalp_take_profit",
             # "price",
         ]
-        string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
+        string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "take_profit_type", "api_key", "api_secret", "target"]
         numeric_fields = ["quantity", "leverage"]
         dict_fields = []
-        bool_fields = ["test", "duplicate"]
+        bool_fields = ["test", "duplicate", "use_all_collateral", "only_usd"]
         enums = {
             "target": {"SPOT", "MARGIN", "FUTURE"},
             "order_type": {"LIMIT", "MARKET"},
             "stop_loss_type": {"LIMIT", "MARKET"},
             "take_profit_type": {"LIMIT", "MARKET"},
-            "exchange": {"binance", "ftx"}
+            "exchange": {"binance", "ftx", "bybit"}
         }
         data = request.get_json()
 
@@ -120,18 +122,20 @@ def clean_validator(f):
             "duplicate",
             "api_key",
             "api_secret",
-            "type"
+            "type",
+            "use_all_collateral",
+            "only_usd"
         ]
         string_fields = ["exchange", "type", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
         numeric_fields = ["quantity", "leverage"]
         dict_fields = []
-        bool_fields = ["test", "duplicate"]
+        bool_fields = ["test", "duplicate", "use_all_collateral", "only_usd"]
         enums = {
             "target": {"SPOT", "MARGIN", "FUTURE"},
             "order_type": {"LIMIT", "MARKET"},
             "stop_loss_type": {"LIMIT", "MARKET"},
             "take_profit_type": {"LIMIT", "MARKET"},
-            "exchange": {"binance", "ftx"}
+            "exchange": {"binance", "ftx", "bybit"}
         }
         data = request.get_json()
 

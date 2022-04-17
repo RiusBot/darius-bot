@@ -3,6 +3,7 @@ import logging
 from bot_executor.services.exchange.ftx import FtxClient
 from bot_executor.services.exchange.ftxus import FtxusClient
 from bot_executor.services.exchange.binance import BinanceClient
+from bot_executor.services.exchange.bybit import BybitClient
 
 
 def order_execute(order_info: dict):
@@ -10,16 +11,25 @@ def order_execute(order_info: dict):
     exchange = get_exchange(order_info)
     order = exchange.make_order(order_info)
     tp_order, sl_orer = None, None
-    if order:
+    if order_info["exchange"] == 'bybit' and order:
+    
+        result = {
+            "status": 'success' if order else 'error',
+            "open_order": order.get("id", order.get("info", {}).get("order_id")),
+            "sl_order": order.get("id", order.get("info", {}).get("order_id")) if (order.get("info").get("stop_loss") != "0") else None,
+            "tp_order": order.get("id", order.get("info", {}).get("order_id")) if (order.get("info").get('take_profit') != "0") else None,
+            "price": order.get("average", order.get("price"))
+        }
+        
+    elif order:
         tp_order, sl_order = exchange.make_oco_order(order, order_info)
-
-    result = {
-        "status": 'success' if order else 'error',
-        "open_order": order.get("id", order.get("info", {}).get("id")),
-        "sl_order": None if sl_order is None else sl_order.get("id", sl_order.get("info", {}).get("id")),
-        "tp_order": None if tp_order is None else tp_order.get("id", tp_order.get("info", {}).get("id")),
-        "price": order.get("average", order.get("price"))
-    }
+        result = {
+            "status": 'success' if order else 'error',
+            "open_order": order.get("id", order.get("info", {}).get("id")),
+            "sl_order": None if sl_order is None else sl_order.get("id", sl_order.get("info", {}).get("id")),
+            "tp_order": None if tp_order is None else tp_order.get("id", tp_order.get("info", {}).get("id")),
+            "price": order.get("average", order.get("price"))
+        }
     logging.info("Results:")
     logging.info(json.dumps(result, indent=4))
     return result
@@ -27,14 +37,14 @@ def order_execute(order_info: dict):
 
 def get_exchange(order_info: dict):
     exchange = order_info["exchange"]
-    if exchange == 'binance':
+    if exchange == "binance":
         exchange = BinanceClient(order_info)
     elif exchange == "ftx":
         exchange = FtxClient(order_info)
     elif exchange == "ftxus":
         exchange = FtxusClient(order_info)
-    # elif exchange == "gate":
-    #     pass
+    elif exchange == "bybit":
+        exchange = BybitClient(order_info)
     # elif exchange == "mexc":
     #     pass
     else:
