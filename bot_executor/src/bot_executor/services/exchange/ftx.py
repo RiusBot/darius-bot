@@ -148,6 +148,18 @@ class FtxClient(Base):
             order["amount"] = float(order.get("filled", 0))
         return order
 
+    def cancel_order(self, tp_order:dict , sl_order:dict , order_info: dict):
+        symbol = order_info["symbol"]
+
+        if tp_order:
+                self.exchange.cancelOrder(tp_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                print("clean tp order")
+
+        if sl_order:
+                self.exchange.cancelOrder(sl_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                print("clean sl order")
+        return tp_order, sl_order
+
     def create_oco_order(self, symbol: str, order_info: dict, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
         price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
@@ -215,7 +227,7 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = price * (1 + stop_loss) - price
-        #pdb.set_trace()
+
         try:
             sl_order = self.exchange.private_post_conditional_orders(
                 params=params
@@ -224,16 +236,7 @@ class FtxClient(Base):
             logging.info("sl_order exception happened")
 
         if tp_order==None or sl_order==None: 
-             symbol = order_info["symbol"]
-
-             if tp_order:
-                     self.exchange.cancelOrder(tp_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
-                     print("clean tp order")
-
-             if sl_order:
-                     self.exchange.cancelOrder(sl_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
-                     print("clean sl order")
-
+             self.cancel_order(tp_order, sl_order, order_info)
              return tp_order, sl_order
 
         return tp_order.get("result"), sl_order.get("result")
@@ -311,16 +314,7 @@ class FtxClient(Base):
             logging.info("sl_order exception happened")
 
         if tp_order==None or sl_order==None:
-             symbol = order_info["symbol"]
-
-             if tp_order:
-                     self.exchange.cancelOrder(tp_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
-                     print("clean tp order")
-
-             if sl_order:
-                     self.exchange.cancelOrder(sl_order["result"]["id"], symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
-                     print("clean sl order")
-
+             self.cancel_order(self, tp_order, sl_order, order_info)
              return tp_order, sl_order
 
         return tp_order.get("result"), sl_order.get("result")
