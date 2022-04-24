@@ -10,19 +10,19 @@ setup(
     python_requires='>=3.7',
     platforms=["any"],
     install_requires=[
-        "urllib3",
-        "flask",
-        "requests",
-        "ccxt",
-        "python-dateutil",
+        "urllib3==1.26.8",
+        "flask==2.0.3",
+        "requests==2.27.1",
+        "ccxt==1.79.94",
+        "python-dateutil==2.8.2",
         "google-cloud-secret-manager==2.8.0",
         "firebase_admin==4.4.0",
-        "Flask-SQLAlchemy",
-        "PyMySQL",
-        "mysqlclient",
-        "pyyaml",
-        "sqlalchemy",
-        "freqtrade",
-        'dateparser'
+        "Flask-SQLAlchemy==2.5.1",
+        "PyMySQL==1.0.2",
+        "mysqlclient=2.1.0",
+        "pyyaml==21.10.1",
+        "sqlalchemy==1.4.31",
+        "freqtrade==2022.1",
+        'dateparser==1.1.0'
     ]
 )

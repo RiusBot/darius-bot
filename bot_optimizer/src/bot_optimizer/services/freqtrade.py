@@ -130,19 +130,39 @@ def freqtrade_hyperopt(db, json_payload: dict):
         for loss in config.Hyperopt_Loss:
 
             try:
+                params = {
+                    'take_profit': 0,
+                    'stop_loss': 0,
+                    'export_time': None,
+                }
+
                 freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange)
                 sysargv = f"hyperopt --strategy riusbot --timeframe {timeframe} --timerange {timerange} --hyperopt-loss {loss} --spaces roi stoploss -e 20"
                 freqtrade_run(sysargv)
 
                 with open("user_data/strategies/riusbot.json", "r") as f:
                     result = json.load(f)
-                    params = {
-                        'take_profit': result['params']['roi']['0'],
-                        'stop_loss': -result['params']['stoploss']['stoploss'],
-                        'export_time': result['export_time'],
-                    }
-                    logging.info(f"{channel}, {loss}")
-                    logging.info(json.dumps(params, indent=4))
+                    params['take_profit'] += result['params']['roi']['0']
+                    params['stop_loss'] += -result['params']['stoploss']['stoploss']
+                    params['export_time'] = result['export_time']
+
+                try:
+                    sysargv = f"hyperopt --strategy riusbot_sell --timeframe {timeframe} --timerange {timerange} --hyperopt-loss {loss} --spaces roi stoploss -e 20"
+                    freqtrade_run(sysargv)
+
+                    with open("user_data/strategies/riusbot_sell.json", "r") as f:
+                        result = json.load(f)
+                        params['take_profit'] += -result['params']['stoploss']['stoploss']
+                        params['stop_loss'] += result['params']['roi']['0']
+                        params['export_time'] = result['export_time']
+
+                    params['take_profit'] /= 2
+                    params['stop_loss'] /= 2
+                except:
+                    logging.exception("")
+
+                logging.info(f"{channel}, {loss}")
+                logging.info(json.dumps(params, indent=4))
 
                 create_hyperopt(
                     db,

@@ -175,7 +175,7 @@ build-bot-executor: set-project
 deploy-bot-executor: set-project
 	gcloud beta run deploy bot-executor \
 			--image gcr.io/$(PROJECT_ID)/bot-executor \
-			--region asia-east1 \
+			--region us-central1 \
 			--platform managed \
 			--cpu 1 \
 			--concurrency 1 \
