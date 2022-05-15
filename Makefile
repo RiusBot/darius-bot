@@ -5,14 +5,14 @@
 ENV ?= $(firstword $(MAKECMDGOALS))
 ifeq ($(ENV), prod)
 	CLOUDBUILD = cloudbuild-prod.yml
-	PROJECT_ID = darius-332003
+	PROJECT_ID = darius-prod
 	APP = app-prod.yml
+	CREDENTIAL = darius-prod-5bed36160a65.json
 else
 	CREDENTIAL = darius-332003-6391a8358dec.json
 	CLOUDBUILD = cloudbuild-dev.yml
 	PROJECT_ID = darius-332003
 	APP = app-dev.yml
-	WORKER_URL = ''
 endif
 
 ifeq ($(words $(MAKECMDGOALS)), 1)
@@ -167,32 +167,36 @@ start-optimizer-local:
 set-project:
 	gcloud config set project $(PROJECT_ID)
 
+bot-executor: build-bot-executor deploy-bot-executor
+
 build-bot-executor: set-project
 	gcloud builds submit --config bot_executor/$(CLOUDBUILD)
 
 deploy-bot-executor: set-project
 	gcloud beta run deploy bot-executor \
 			--image gcr.io/$(PROJECT_ID)/bot-executor \
-			--region asia-east1 \
+			--region us-central1 \
 			--platform managed \
 			--cpu 1 \
 			--concurrency 1 \
 			--timeout 2m \
 			--memory 1Gi \
-			--max-instances 2 \
+			--max-instances 20 \
 			--update-env-vars='project_id=$(PROJECT_ID)'
 
+bot-optimizer: build-bot-optimizer deploy-bot-optimizer
+
 build-bot-optimizer: set-project
-	gcloud builds submit --config bot_optimizer/$(CLOUDBUILD)
+	gcloud builds submit --config bot_optimizer/$(CLOUDBUILD) --timeout 60m
 
 deploy-bot-optimizer: set-project
 	gcloud beta run deploy bot-optimizer \
 			--image gcr.io/$(PROJECT_ID)/bot-optimizer \
 			--region asia-east1 \
 			--platform managed \
-			--cpu 1 \
+			--cpu 4 \
 			--concurrency 1 \
-			--timeout 2m \
-			--memory 1Gi \
-			--max-instances 2 \
+			--timeout 30m \
+			--memory 4Gi \
+			--max-instances 1 \
 			--update-env-vars='project_id=$(PROJECT_ID)'

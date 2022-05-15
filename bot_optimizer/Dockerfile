@@ -1,5 +1,6 @@
 FROM python:3.8-slim-buster
 
+
 # System packages installation
 RUN apt update -y
 RUN apt install -y \
@@ -21,16 +22,18 @@ RUN apt install -y \
 RUN git clone https://github.com/freqtrade/freqtrade.git
 WORKDIR freqtrade
 RUN git checkout stable
+RUN chmod +x ./build_helpers/install_ta-lib.sh
+RUN cd build_helpers && ./install_ta-lib.sh
 RUN pip3 install -r requirements-hyperopt.txt
-WORKDIR build_helpers
-RUN ./install_ta-lib.sh
-RUN pip3 install freqtrade
+RUN pip3 install freqtrade==2022.1
+
 
 # API dependecies + config
 RUN pip3 install gunicorn==20.0.4
 
 # Copy and install source
 COPY ./bot_optimizer/src/ /opt/bot_optimizer/
+
 
 RUN pip3 install -e /opt/bot_optimizer/
 

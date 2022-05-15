@@ -70,3 +70,10 @@ def get_db_uri():
     db_uri = f"mysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     logging.info(f"DB_URI: {db_uri}")
     return db_uri
+
+
+Hyperopt_Loss = [
+    'OnlyProfitHyperOptLoss',
+    'SharpeHyperOptLoss',
+    'MaxDrawDownHyperOptLoss'
+]

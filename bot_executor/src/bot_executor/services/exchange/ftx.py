@@ -101,7 +101,7 @@ class FtxClient(Base):
         return order
 
     def create_limit_buy(self, symbol: str):
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 1.01
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
@@ -133,7 +133,7 @@ class FtxClient(Base):
         return order
 
     def create_limit_sell(self, symbol: str):
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 0.99
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
@@ -192,7 +192,8 @@ class FtxClient(Base):
             if self.take_profit_type == "LIMIT":
                 params["orderPrice"] = tp_price
         else:
-            params["trailValue"] = take_profit
+            params["type"] = "trailingStop"
+            params["trailValue"] = price * (1 - take_profit) - price
         tp_order = self.exchange.private_post_conditional_orders(
             params=params
         )
@@ -209,7 +210,8 @@ class FtxClient(Base):
             if self.stop_loss_type == "LIMIT":
                 params["orderPrice"] = sl_price
         else:
-            params["trailValue"] = stop_loss
+            params["type"] = "trailingStop"
+            params["trailValue"] = price * (1 + stop_loss) - price
         sl_order = self.exchange.private_post_conditional_orders(
             params=params
         )
@@ -258,6 +260,7 @@ class FtxClient(Base):
             if self.take_profit_type == "LIMIT":
                 params["orderPrice"] = tp_price
         else:
+            params["type"] = "trailingStop"
             params["trailValue"] = take_profit
         tp_order = self.exchange.private_post_conditional_orders(
             params=params
@@ -275,6 +278,7 @@ class FtxClient(Base):
             if self.stop_loss_type == "LIMIT":
                 params["orderPrice"] = sl_price
         else:
+            params["type"] = "trailingStop"
             params["trailValue"] = stop_loss
         sl_order = self.exchange.private_post_conditional_orders(
             params=params
@@ -364,6 +368,37 @@ class FtxClient(Base):
         #     if volume is not None:
         #         if config["minimum_volume"] > volume:
         #             return True
+
+    def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
+        symbol = self.make_symbol(symbol)
+        open_conditional_order_list = []
+        ftx_response = self.exchange.private_get_conditional_orders({'market': symbol})
+        if ftx_response.get('success'):
+            open_conditional_order_list = ftx_response['result']
+        else:
+            logging.error(f"{ftx_response}")
+
+        if tp_order:
+            closed = True
+            for order in open_conditional_order_list:
+                if order['id'] == tp_order:
+                    closed = False
+                    break
+
+            if closed:
+                self.exchange.cancelOrder(sl_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                return "TP"
+
+        if sl_order:
+            closed = True
+            for order in open_conditional_order_list:
+                if order['id'] == sl_order:
+                    closed = False
+                    break
+
+            if closed:
+                self.exchange.cancelOrder(tp_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+                return "SL"
 
     def make_order(self, order_info: dict):
         logging.info("Start making order.")

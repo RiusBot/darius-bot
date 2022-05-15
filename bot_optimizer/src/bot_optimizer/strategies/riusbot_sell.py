@@ -20,7 +20,7 @@ import pandas_ta as pta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 
 
-class riusbot(IStrategy):
+class riusbot_sell(IStrategy):
     """
     This is a strategy template to get you started.
     More information in https://www.freqtrade.io/en/latest/strategy-customization/
@@ -106,8 +106,8 @@ class riusbot(IStrategy):
 
             if config.get('riusbot_params'):
                 params = config["riusbot_params"]
-                self.minimal_roi = {"0": params['take_profit'] if params['take_profit'] != 0 else 1}
-                self.stoploss = -params['stop_loss'] if params['stop_loss'] != 0 else -0.5
+                self.minimal_roi = {"0": params['stop_loss'] if params['stop_loss'] != 0 else 1}
+                self.stoploss = -params['take_profit'] if params['take_profit'] != 0 else -0.5
                 logging.info(f"load riusbot params {json.dumps(params)}")
 
         super().__init__(*args, **kwargs)
@@ -375,7 +375,7 @@ class riusbot(IStrategy):
         
         pair = metadata["pair"].replace("/USDT", "")
         for i in self.my_trade[pair]:
-            if i["action"] == "BUY":
+            if i["action"] == "SELL":
                 ts = pd.Timestamp(i["timestamp"], unit='s').tz_localize('utc')
                 idx = dataframe.date.searchsorted(ts)
                 dataframe.loc[idx-1, "buy"] = 1
@@ -402,7 +402,7 @@ class riusbot(IStrategy):
         
         # pair = metadata["pair"].replace("/USDT", "")
         # for i in self.my_trade[pair]:
-        #     if i["action"] == "SELL":
+        #     if i["action"] == "BUY":
         #         ts = pd.Timestamp(i["timestamp"], unit='s').tz_localize('utc')
         #         idx = dataframe.date.searchsorted(ts)
         #         dataframe.loc[idx, "sell"] = 1

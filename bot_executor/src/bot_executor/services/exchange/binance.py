@@ -43,7 +43,17 @@ class BinanceClient(Base):
             raise e
 
         self.markets = self.exchange.loadMarkets(True)
+        self.market_postprocess()
     
+    def market_postprocess(self):
+        if self.target.lower() == "future":
+            tmp = {
+                'SHIB/USDT': self.markets.get("1000SHIB/USDT"),
+                'XEC/USDT': self.markets.get("1000XEC/USDT"),
+            }
+            self.markets.update(tmp)
+            self.exchange.markets.update(tmp)
+
     def get_position_param(self, side: str):
         if self.target == "FUTURE":
             return {"positionSide": self.get_position_side(side)}
@@ -76,7 +86,7 @@ class BinanceClient(Base):
 
     def get_price(self, symbol: str) -> float:
         symbol = symbol.replace("/", "")
-        return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"]) * 1.01
+        return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"])
 
     def get_balance(self):
         balance = 0
@@ -130,7 +140,7 @@ class BinanceClient(Base):
         return order
 
     def create_limit_buy(self, symbol: str):
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 1.01
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
@@ -163,7 +173,7 @@ class BinanceClient(Base):
         return order
 
     def create_limit_sell(self, symbol: str):
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 0.99
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
@@ -223,13 +233,14 @@ class BinanceClient(Base):
             if self.take_profit_type != "TRAILING":
                 tp_params = {
                     "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
+                if not self.get_position_mode():
+                    tp_params["closePosition"] = (tp_order_type=="TAKE_PROFIT_MARKET")
             else:
                 tp_params = {
-                    "callbackRate": take_profit * 100,
+                    "callbackRate": min(max(take_profit * 100, 0.1), 5),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -248,13 +259,14 @@ class BinanceClient(Base):
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
+                if not self.get_position_mode():
+                    sl_params["closePosition"] = (sl_order_type=="STOP_MARKET")
             else:
                 sl_params = {
-                    "callbackRate": stop_loss * 100,
+                    "callbackRate": min(max(stop_loss * 100, 0.1), 5),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("SHORT")
                 }
@@ -337,10 +349,11 @@ class BinanceClient(Base):
             if self.take_profit_type != "TRAILING":
                 tp_params = {
                     "stopPrice": tp_price,
-                    "closePosition": (tp_order_type=="TAKE_PROFIT_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
+                if not self.get_position_mode():
+                    tp_params["closePosition"] = (tp_order_type=="TAKE_PROFIT_MARKET")
             else:
                 tp_params = {
                     "callbackRate": take_profit * 100,
@@ -362,10 +375,11 @@ class BinanceClient(Base):
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
                     "stopPrice": sl_price,
-                    "closePosition": (sl_order_type=="STOP_MARKET" and not self.get_position_mode()),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
+                if not self.get_position_mode():
+                    sl_params["closePosition"] = (sl_order_type=="STOP_MARKET")
             else:
                 sl_params = {
                     "callbackRate": stop_loss * 100,
@@ -469,6 +483,27 @@ class BinanceClient(Base):
         #     if volume is not None:
         #         if config["minimum_volume"] > volume:
         #             return True
+
+    def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
+        symbol = self.make_symbol(symbol)
+        tp_order_info = {'status': 'unknown'}
+        sl_order_info = {'status': 'unknown'}
+
+        if tp_order:
+            tp_order_info = self.exchange.fetchOrder(tp_order, symbol)
+
+        if sl_order:
+            sl_order_info = self.exchange.fetchOrder(sl_order, symbol)
+
+        if tp_order_info["status"] == "closed":
+            if sl_order_info["status"] == "open":
+                self.exchange.cancelOrder(sl_order, symbol)
+            return "TP"
+
+        if sl_order_info["status"] == "closed":
+            if tp_order_info["status"] == "open":
+                self.exchange.cancelOrder(tp_order, symbol)
+            return "SL"
 
     def make_order(self, order_info: dict):
         logging.info("Start making order.")
