@@ -9,8 +9,10 @@ def order_execute(order_info: dict):
     logging.info("Start order execute")
     exchange = get_exchange(order_info)
     order = exchange.make_order(order_info)
-    tp_order, sl_orer = None, None
-    if order:
+    tp_order, sl_order = None, None
+    open_order = exchange.fetchOrder(order['id']) # check IOC order status
+
+    if order and open_order['status'] != "canceled":
         tp_order, sl_order = exchange.make_oco_order(order, order_info)
 
     result = {
