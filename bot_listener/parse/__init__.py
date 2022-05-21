@@ -6,6 +6,8 @@ from .vegas import VegasParser
 from .justin import JustinParser
 from .courage import CourageParser
 from .moon import MoonParser
+from .acdc import ACDCParser
+from .airforce import AirforceParser
 
 __all__ = [
     "PerpetualParser",
@@ -16,4 +18,6 @@ __all__ = [
     "JustinParser",
     "CourageParser",
     "MoonParser",
+    "ACDCParser",
+    "AirforceParser",
 ]

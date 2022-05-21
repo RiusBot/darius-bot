@@ -20,11 +20,13 @@ scalp_channel = None
 vegas_channel = None
 courage_channel = None
 moon_channel = None
+acdc_channel = None
+airforce_channel = None
 logging.info(config["backend_endpoint"])
 
 
 async def get_channels():
-    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel
+    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel, acdc_channel, airforce_channel
     logging.info("Get channel")
     test_channel = await telegram_client.get_entity('test')
     rose_channel = await telegram_client.get_entity('🌹 Rose Premium Signal For Bot')
@@ -36,13 +38,15 @@ async def get_channels():
     vegas_channel = await telegram_client.get_entity('Vegas 4hr Indicator')
     courage_channel = await telegram_client.get_entity('Cryptophet Trading Room')
     moon_channel = await telegram_client.get_entity('Moon Indicator')
-    for i in [vegas_channel, courage_channel, perpetual_channel, moon_channel]:
+    acdc_channel = await telegram_client.get_entity('✈️ACDC策略快訊✈️')
+    airforce_channel = await telegram_client.get_entity('空軍司令部(F)')
+    for i in [vegas_channel, courage_channel, perpetual_channel, moon_channel, acdc_channel, airforce_channel]:
         print(i)
         print()
     
     await telegram_client.send_message(entity=test_channel, message='345')
     
-    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel
+    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel, acdc_channel, airforce_channel
 
 
 async def get_IDs():
@@ -109,6 +113,20 @@ async def handler(event):
 #     except Exception:
 #         pass
 
+
+# @telegram_client.on(events.NewMessage(from_users=acdc_channel, forwards=False))
+# async def acdc_handler(event):
+#     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+#     info = parse.ACDCParser().parse(event)
+#     logging.info(json.dumps(info, indent=4))
+#     await send_to_execute(info)
+
+# @telegram_client.on(events.NewMessage(from_users=airforce_channel, forwards=False))
+# async def airforce_handler(event):
+#     logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+#     info = parse.AirforceParser().parse(event)
+#     logging.info(json.dumps(info, indent=4))
+#     await send_to_execute(info)
 
 @telegram_client.on(events.NewMessage(from_users=moon_channel, forwards=False))
 async def moon_handler(event):
