@@ -122,12 +122,15 @@ def freqtrade_hyperopt(db, json_payload: dict):
     exchange = json_payload.get('exchange', 'binance')
     timeframe = json_payload.get('timeframe', '1h')
     days = json_payload.get('days', '90')
+    channel_list = json_payload.get('channels', get_channel(db))
+    loss_list = json_payload.get('loss', config.Hyperopt_Loss)
+    create = json_payload.get('create', True)
     timerange, start_at, end_at = process_hyperopt_timerange(json_payload['timerange'], days)
     output = defaultdict(dict)
 
-    for channel in get_channel(db):
+    for channel in channel_list:
 
-        for loss in config.Hyperopt_Loss:
+        for loss in loss_list:
 
             try:
                 params = {
@@ -164,15 +167,16 @@ def freqtrade_hyperopt(db, json_payload: dict):
                 logging.info(f"{channel}, {loss}")
                 logging.info(json.dumps(params, indent=4))
 
-                create_hyperopt(
-                    db,
-                    json.dumps(params),
-                    channel,
-                    days,
-                    loss,
-                    start_at,
-                    end_at
-                )
+                if create:
+                    create_hyperopt(
+                        db,
+                        json.dumps(params),
+                        channel,
+                        days,
+                        loss,
+                        start_at,
+                        end_at
+                    )
                 output[channel][loss] = params
             except Exception as e:
                 if "Insufficient trade message" in str(e) or 'optimized config' in str(e):
@@ -188,6 +192,9 @@ def freqtrade_backtest(db, json_payload: dict):
     exchange = json_payload.get('exchange', 'binance')
     timeframe = json_payload.get('timeframe', '1h')
     timerange, start_at, end_at = process_backtest_timerange(json_payload['timerange'])
+    channel_list = json_payload.get('channels', get_channel(db))
+    loss_list = json_payload.get('loss', ["SharpeHyperOptLoss"])
+    create = json_payload.get('create', True)
     output = defaultdict(dict)
     
     # remove hyperopt params file
@@ -196,31 +203,33 @@ def freqtrade_backtest(db, json_payload: dict):
     if os.path.isfile("user_data/strategies/riusbot_sell.json"):
         os.remove("user_data/strategies/riusbot_sell.json")
     
-    for channel in get_channel(db):
+    for channel in channel_list:
 
-        for loss in ["SharpeHyperOptLoss"]:  # config.Hyperopt_Loss:
+        for loss in loss_list:  # config.Hyperopt_Loss:
 
             try:
                 backtest_result = None
                 hyperopt = get_hyperopt(db, channel, loss, start_at)
                 params = json.loads(hyperopt.to_dict()['params'])
+                params = {'take_profit': 0.01, 'stop_loss': 0.01}
                 freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange, params)
 
-                sysargv = f"backtesting --strategy-list riusbot riusbot_sell --timeframe {timeframe} --timerange {timerange}"
+                sysargv = f"backtesting --strategy-list riusbot riusbot_sell --timeframe {timeframe} --timerange {timerange} --eps"
                 freqtrade_run(sysargv)
                 with open("user_data/backtest_results/.last_result.json", "r") as f:
                     last_result_path = json.load(f)['latest_backtest']
                 with open(os.path.join("user_data/backtest_results", last_result_path), "r") as f:
                     backtest_result = json.load(f)
 
-                create_performance(
-                    db,
-                    start_at,
-                    end_at,
-                    json.dumps(backtest_result),
-                    channel,
-                    hyperopt
-                )
+                if create:
+                    create_performance(
+                        db,
+                        start_at,
+                        end_at,
+                        json.dumps(backtest_result),
+                        channel,
+                        hyperopt
+                    )
                 output[channel][loss] = backtest_result
 
             except Exception as e:

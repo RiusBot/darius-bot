@@ -19,8 +19,8 @@ setup(
         "firebase_admin==4.4.0",
         "Flask-SQLAlchemy==2.5.1",
         "PyMySQL==1.0.2",
-        "mysqlclient=2.1.0",
-        "pyyaml==21.10.1",
+        "mysqlclient==2.1.0",
+        "pyyaml",
         "sqlalchemy==1.4.31",
         "freqtrade==2022.1",
         'dateparser==1.1.0'

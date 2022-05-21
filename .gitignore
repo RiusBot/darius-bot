@@ -1,6 +1,7 @@
 *.json
 user_data
 darius-bot-listener.session
+darius-bot-listener.session-journal
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
