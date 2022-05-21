@@ -2,5 +2,5 @@ telegram_api_id: 8230873
 telegram_api_hash: 'a7166dd79cbb76b0f3845557d7ee37a0'
 backend_endpoint:
     - "https://darius-backend-dot-darius-332003.de.r.appspot.com/api/v1/execute_bot_signal"
-    - "https://darius-backend-dot-darius-prod.de.r.appspot.com/api/v1/execute_bot_signal"
+# - "https://darius-backend-dot-darius-prod.de.r.appspot.com/api/v1/execute_bot_signal"
 #backend_endpoint: "http://localhost:8080/api/v1/execute_bot_signal"
