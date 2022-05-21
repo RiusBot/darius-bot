@@ -37,7 +37,7 @@ def main():
         order = order_execute(order_info)
         return jsonify(order), 200
     except Exception as e:
-        order_info.pop('token')
+        order_info.pop('token', None)
         logging.info("Order info:")
         logging.info(json.dumps(order_info, indent=4))
         logging.exception("")
