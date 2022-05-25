@@ -10,7 +10,7 @@ class ACDCParser(BaseParser):
     def parse_symbol(self, message: str):
         text = message.split('\n')
         info = {i.split(':')[0]: i.split(':')[1] for i in text}
-        return info["標的"].upper(),replace("USDT", "")
+        return info["標的"].upper().replace("USDT", "")
 
     def parse_action(self, message: str):
         text = message.split('\n')

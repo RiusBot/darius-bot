@@ -93,7 +93,7 @@ async def handler(event):
         if "Cryptophet Trading Room" in event.chat.title:
             try:
                 if isinstance(json.loads(event.text), dict):
-                    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+                    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
                     info = parse.CourageParser().parse(event)
                     logging.info(json.dumps(info, indent=4))
                     await send_to_execute(info)
@@ -101,7 +101,7 @@ async def handler(event):
                 logging.exception("")
         elif "✈️ACDC策略快訊✈️" in event.chat.title:
             try:
-                logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+                # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
                 info = parse.ACDCParser().parse(event)
                 logging.info(json.dumps(info, indent=4))
                 await send_to_execute(info)
@@ -109,7 +109,7 @@ async def handler(event):
                 logging.exception("")
         elif "空軍司令部(F)" in event.chat.title:
             try:
-                logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+                # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
                 info = parse.AirforceParser().parse(event)
                 logging.info(json.dumps(info, indent=4))
                 await send_to_execute(info)
@@ -145,23 +145,23 @@ async def handler(event):
 
 @telegram_client.on(events.NewMessage(from_users=moon_channel, forwards=False))
 async def moon_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.MoonParser().parse(event)
-    # logging.info(json.dumps(info, indent=4))
+    logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=vegas_channel, forwards=False))
 async def vegas_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.VegasParser().parse(event)
-    # logging.info(json.dumps(info, indent=4))
+    logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=justin_channel, forwards=False))
 async def justin_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     buy_info = parse.JustinParser("BUY").parse(event)
     sell_info = parse.JustinParser("SELL").parse(event)
 
@@ -170,36 +170,36 @@ async def justin_handler(event):
     buy_info['symbol'] = [j for i, cnt in (buy - sell).items() for j in [i]*cnt]
     sell_info['symbol'] = [j for i, cnt in (sell - buy).items() for j in [i]*cnt]
 
-    # logging.info(json.dumps(buy_info, indent=4))
+    logging.info(json.dumps(buy_info, indent=4))
     await send_to_execute(buy_info)
 
-    # logging.info(json.dumps(sell_info, indent=4))
+    logging.info(json.dumps(sell_info, indent=4))
     await send_to_execute(sell_info)
 
 
 @telegram_client.on(events.NewMessage(from_users=rose_channel, forwards=False))
 async def rose_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.RoseParser().parse(event)
-    # logging.info(json.dumps(info, indent=4))
+    logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=perpetual_channel, forwards=False))
 async def perpetual_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.PerpetualParser().parse(event)
-    # logging.info(json.dumps(info, indent=4))
+    logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=courage_channel, forwards=False))
 async def courage_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     try:
         if isinstance(json.loads(event.text), dict):
             info = parse.CourageParser().parse(event)
-            # logging.info(json.dumps(info, indent=4))
+            logging.info(json.dumps(info, indent=4))
             await send_to_execute(info)
     except Exception:
         logging.exception("")
@@ -207,17 +207,17 @@ async def courage_handler(event):
 
 @telegram_client.on(events.NewMessage(from_users=whale_channel, forwards=False))
 async def whale_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.WhalehunterParser().parse(event)
-    # logging.info(json.dumps(info, indent=4))
+    logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=scalp_channel, forwards=False))
 async def scalp_handler(event):
-    logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
     info = parse.ScalpParser().parse(event)
-    # logging.info(json.dumps(info, indent=4))
+    logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
 
 
