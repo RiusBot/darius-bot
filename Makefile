@@ -147,8 +147,8 @@ start-listener-local:
 start-executor-local:
 	GOOGLE_APPLICATION_CREDENTIALS=$(CREDENTIAL) project_id=local gunicorn bot_executor.flask_app:app \
 			--bind :8000 \
-			--workers 1 \
-			--threads 1 \
+			--workers 8 \
+			--threads 8 \
 			--timeout 900
             
 start-optimizer-local:
@@ -178,10 +178,10 @@ deploy-bot-executor: set-project
 			--region us-central1 \
 			--platform managed \
 			--cpu 1 \
-			--concurrency 1 \
-			--timeout 2m \
+			--concurrency 5 \
+			--timeout 10s \
 			--memory 1Gi \
-			--max-instances 20 \
+			--max-instances 50 \
 			--update-env-vars='project_id=$(PROJECT_ID)'
 
 bot-optimizer: build-bot-optimizer deploy-bot-optimizer

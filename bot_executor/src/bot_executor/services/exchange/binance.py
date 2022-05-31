@@ -110,6 +110,20 @@ class BinanceClient(Base):
             balance = self.exchange.fetch_balance()["info"]['availableBalance']
         logging.info(f"Balance remain: {balance}")
         return float(balance)
+    
+    def get_position(self, symbol: str):
+        if self.target == "SPOT" or self.target == "MARGIN":
+            token = symbol.split('/')[0]
+            asset = self.exchange.fetch_balance()["total"]
+            amount = float(asset.get(token, 0))
+            price = self.get_price(symbol)
+            notional = amount * price
+            return {'notional', notional}
+        elif self.target == "FUTURE":
+            positions = self.exchange.fetchPositions()
+            for position in positions:
+                if position.get('symbol') == symbol and position.get('side'):
+                    return position
 
     def get_margin(self, symbol: str) -> float:
         margin = None
@@ -198,7 +212,7 @@ class BinanceClient(Base):
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
-        amount = float(open_order["amount"]) * 0.99
+        amount = float(open_order["amount"]) * 0.995
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
         if tp_price is None:
@@ -314,7 +328,7 @@ class BinanceClient(Base):
         return tp_order, sl_order
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
-        amount = float(open_order["amount"]) * 0.99
+        amount = float(open_order["amount"]) * 0.995
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
         if tp_price is None:
@@ -362,7 +376,7 @@ class BinanceClient(Base):
                     tp_params["closePosition"] = (tp_order_type=="TAKE_PROFIT_MARKET")
             else:
                 tp_params = {
-                    "callbackRate": take_profit * 100,
+                    "callbackRate": min(max(take_profit * 100, 0.1), 5),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
@@ -388,7 +402,7 @@ class BinanceClient(Base):
                     sl_params["closePosition"] = (sl_order_type=="STOP_MARKET")
             else:
                 sl_params = {
-                    "callbackRate": stop_loss * 100,
+                    "callbackRate": min(max(stop_loss * 100, 0.1), 5),
                     "priceProtect": True,
                     "positionSide": self.get_position_side("BUY")
                 }
@@ -415,18 +429,6 @@ class BinanceClient(Base):
                 tp_order = order
         return tp_order, sl_order
 
-    def validate_symbol(self, symbol: str):
-        if symbol not in self.markets:
-            error_msg = f"{symbol} invalid symbol"
-            logging.error(error_msg)
-            raise Exception(error_msg)
-
-    def validate_action(self, action: str):
-        if action not in ["BUY", "SELL"]:
-            error_msg = f"invalid action [{action}]"
-            logging.error(error_msg)
-            raise Exception(logging.error(error_msg))
-
     def validate_margin(self, symbol: str):
         margin = self.get_margin(symbol)
         logging.info(f"Current margin: {margin}, minimum margin: {self.margin}.")
@@ -440,56 +442,6 @@ class BinanceClient(Base):
                 logging.error(error_msg)
                 raise Exception(error_msg)
 
-    def validate_duplicate(self, symbol: str, action: str):
-        if self.target == "SPOT" or self.target == "MARGIN":
-            logging.info("check spot duplicate")
-            token = symbol.split('/')[0]
-            asset = self.exchange.fetch_balance()["total"]
-            amount = float(asset.get(token, 0))
-            price = self.get_price(symbol)
-            notional = amount * price
-            if notional > 10:
-                logging.info(f"{symbol} has {notional} notional.")
-                raise Exception("Position duplicate")
-        elif self.target == "FUTURE":
-            logging.info("check future duplicate")
-            positions = self.exchange.fetchPositions()
-            for position in positions:
-                if position.get('symbol') == symbol and position.get('side'):
-                    side = position.get('side')
-                    logging.info(f"{symbol} has {side} position.")
-                    side_map = {
-                        "BUY": ("BUY", "LONG"),
-                        "SELL": ("SHORT", "SELL")
-                    }
-                    if side.upper() in side_map[action]:
-                        raise Exception("Position duplicate")
-
-    def validate_order(self, symbol: str, action: str):
-
-        if self.test_only:
-            logging.error("Test only")
-            raise Exception("Test only")
-
-        self.validate_symbol(symbol)
-        self.validate_action(action)
-
-        if self.target != "SPOT" and self.margin:
-            self.validate_margin(symbol)
-
-        if action == "sell" and self.target != "FUTURE":
-            logging.error("short only in future")
-            raise Exception("short only in future")
-
-        if self.no_duplicate:
-            self.validate_duplicate(symbol, action)
-
-        # if config["minimum_volume"]:
-        #     volume = self.get_volume(symbol)
-        #     if volume is not None:
-        #         if config["minimum_volume"] > volume:
-        #             return True
-
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         symbol = self.make_symbol(symbol)
         tp_order_info = {'status': 'unknown'}
@@ -501,49 +453,13 @@ class BinanceClient(Base):
         if sl_order:
             sl_order_info = self.exchange.fetchOrder(sl_order, symbol)
 
-        if tp_order_info["status"] == "closed":
-            if sl_order_info["status"] == "open":
-                self.exchange.cancelOrder(sl_order, symbol)
+        if tp_order_info["status"] == "closed" and sl_order_info["status"] == "open":
+            self.exchange.cancelOrder(sl_order, symbol)
             return "TP"
 
-        if sl_order_info["status"] == "closed":
-            if tp_order_info["status"] == "open":
-                self.exchange.cancelOrder(tp_order, symbol)
+        if sl_order_info["status"] == "closed" and tp_order_info["status"] == "open":
+            self.exchange.cancelOrder(tp_order, symbol)
             return "SL"
 
-    def make_order(self, order_info: dict):
-        logging.info("Start making order.")
-        symbol = self.make_symbol(order_info["symbol"])
-        action = order_info["action"]
-        logging.info(f"Symbol: {symbol}, Action: {action}")
-        self.validate_order(symbol, action)
-
-        open_order = None
-        if action == "BUY":
-            if self.order_type == "LIMIT":
-                open_order = self.create_limit_buy(symbol)
-            elif self.order_type == "MARKET":
-                open_order = self.create_market_buy(symbol)
-        elif action == "SELL":
-            if self.order_type == "LIMIT":
-                open_order = self.create_limit_sell(symbol)
-            elif self.order_type == "MARKET":
-                open_order = self.create_market_sell(symbol)
-        return open_order
-
-    def make_oco_order(self, open_order: dict, order_info: dict):
-        logging.info("Start making OCO order.")
-        sl_order = None
-        tp_order = None
-        symbol = self.make_symbol(order_info["symbol"])
-        action = order_info["action"]
-        stop_loss = order_info.get("stop_loss")
-        take_profit = order_info.get("take_profit")
-        tp_price = order_info.get("scalp_take_profit")
-        sl_price = order_info.get("scalp_stop_loss")
-        if (stop_loss and take_profit) or (tp_price and sl_price):
-            if action == "BUY":
-                tp_order, sl_order = self.create_oco_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
-            elif action == "SELL":
-                tp_order, sl_order = self.create_oco_short_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
-        return tp_order, sl_order
+        if sl_order_info["status"] == "closed" and tp_order_info["status"] == "open":
+            return "closed"

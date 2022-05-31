@@ -38,8 +38,7 @@ def main():
         return jsonify(order), 200
     except Exception as e:
         order_info.pop('token', None)
-        logging.info("Order info:")
-        logging.info(json.dumps(order_info, indent=4))
+        logging.error(f"Order info: {order_info}")
         logging.exception("")
         traceback.format_exc()
         return jsonify({"error_message": str(e)}), 500
@@ -56,8 +55,7 @@ def clean():
         return jsonify(result), 200
     except Exception as e:
         order_info.pop('token', None)
-        logging.info("Order info:")
-        logging.info(json.dumps(order_info, indent=4))
+        logging.error(f"Order info: {order_info}")
         logging.exception("")
         traceback.format_exc()
         return jsonify({"error_message": str(e)}), 500

@@ -79,6 +79,22 @@ class FtxClient(Base):
             if coin['coin'] == "USD":
                 balance = coin["availableWithoutBorrow"]
         return float(balance)
+    
+    def get_position(self, symbol: str):
+        if self.target != "FUTURE":
+            token = symbol.split('/')[0]
+            asset = self.exchange.fetch_balance()["total"]
+            amount = float(asset.get(token, 0))
+            price = self.get_price(symbol)
+            notional = amount * price
+            return {'notional': notional}
+        elif self.target == "FUTURE":
+            positions = self.exchange.fetchPositions()
+            for position in positions:
+                if "symbol" in position:
+                    position = position.get("info", {})
+                if position.get('future') == symbol and position.get('entryPrice') and position.get('side'):
+                    return position
 
     def get_margin(self, symbol: str) -> float:
         margin = self.exchange.private_get_account()["result"]["marginFraction"]
@@ -296,21 +312,6 @@ class FtxClient(Base):
                 tp_order = order
         return tp_order, sl_order
 
-    def validate_symbol(self, symbol: str):
-        if symbol not in self.markets:
-            if symbol not in self.markets:
-                error_msg = f"{symbol} invalid symbol"
-                logging.error(error_msg)
-                logging.error(symbol)
-                logging.error(str(len(self.markets)))
-                raise Exception(error_msg)
-
-    def validate_action(self, action: str):
-        if action not in ["BUY", "SELL"]:
-            error_msg = f"invalid action [{action}]"
-            logging.error(error_msg)
-            raise Exception(logging.error(error_msg))
-
     def validate_margin(self, symbol: str):
         margin = self.get_margin(symbol)
         logging.info(f"Current margin: {margin}, minimum margin: {self.margin}.")
@@ -318,56 +319,6 @@ class FtxClient(Base):
         if margin < self.margin:
             logging.error(error_msg)
             raise Exception(error_msg)
-
-    def validate_duplicate(self, symbol: str, action: str):
-        if self.target == "SPOT" or self.target == "MARGIN":
-            logging.info("check spot duplicate")
-            token = symbol.split('/')[0]
-            asset = self.exchange.fetch_balance()["total"]
-            amount = float(asset.get(token, 0))
-            price = self.get_price(symbol)
-            notional = amount * price
-            if notional > 10:
-                logging.info(f"{symbol} has {notional} notional.")
-                raise Exception("Position duplicate")
-        elif self.target == "FUTURE":
-            logging.info("check future duplicate")
-            positions = self.exchange.fetchPositions()
-            for position in positions:
-                if "symbol" in position:
-                    position = position.get("info", {})
-                if position.get('future') == symbol and position.get('entryPrice') and position.get('side'):
-                    side = position['side']
-                    logging.info(f"{symbol} has {side} position.")
-                    if side.upper() == action:
-                        raise Exception("Position duplicate")
-
-        return False
-
-    def validate_order(self, symbol: str, action: str):
-
-        if self.test_only:
-            logging.error("Test only")
-            raise Exception("Test only")
-
-        self.validate_symbol(symbol)
-        self.validate_action(action)
-
-        if self.target != "SPOT" and self.margin:
-            self.validate_margin(symbol)
-
-        if action == "sell" and self.target != "FUTURE":
-            logging.error("short only in future")
-            raise Exception("short only in future")
-
-        if self.no_duplicate:
-            self.validate_duplicate(symbol, action)
-
-        # if config["minimum_volume"]:
-        #     volume = self.get_volume(symbol)
-        #     if volume is not None:
-        #         if config["minimum_volume"] > volume:
-        #             return True
 
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         symbol = self.make_symbol(symbol)
@@ -378,61 +329,31 @@ class FtxClient(Base):
         else:
             logging.error(f"{ftx_response}")
 
+        tp_closed = True
+        sl_closed = True
+
         if tp_order:
             closed = True
             for order in open_conditional_order_list:
                 if order['id'] == tp_order:
-                    closed = False
+                    tp_closed = False
                     break
-
-            if closed:
-                self.exchange.cancelOrder(sl_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
-                return "TP"
 
         if sl_order:
             closed = True
             for order in open_conditional_order_list:
                 if order['id'] == sl_order:
-                    closed = False
+                    sl_closed = False
                     break
 
-            if closed:
-                self.exchange.cancelOrder(tp_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
-                return "SL"
-
-    def make_order(self, order_info: dict):
-        logging.info("Start making order.")
-        symbol = self.make_symbol(order_info["symbol"])
-        action = order_info["action"]
-        logging.info(f"Symbol: {symbol}, Action: {action}")
-        self.validate_order(symbol, action)
-
-        open_order = None
-        if action == "BUY":
-            if self.order_type == "LIMIT":
-                open_order = self.create_limit_buy(symbol)
-            elif self.order_type == "MARKET":
-                open_order = self.create_market_buy(symbol)
-        elif action == "SELL":
-            if self.order_type == "LIMIT":
-                open_order = self.create_limit_sell(symbol)
-            elif self.order_type == "MARKET":
-                open_order = self.create_market_sell(symbol)
-        return open_order
-
-    def make_oco_order(self, open_order: dict, order_info: dict):
-        logging.info("Start making OCO order.")
-        sl_order = None
-        tp_order = None
-        symbol = self.make_symbol(order_info["symbol"])
-        action = order_info["action"]
-        stop_loss = order_info.get("stop_loss")
-        take_profit = order_info.get("take_profit")
-        tp_price = order_info.get("scalp_take_profit")
-        sl_price = order_info.get("scalp_stop_loss")
-        if (stop_loss and take_profit) or (tp_price and sl_price):
-            if action == "BUY":
-                tp_order, sl_order = self.create_oco_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
-            elif action == "SELL":
-                tp_order, sl_order = self.create_oco_short_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
-        return tp_order, sl_order
+        if tp_closed and not sl_closed:
+            self.exchange.cancelOrder(sl_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+            return "TP"
+        
+        if not tp_closed and sl_closed:
+            self.exchange.cancelOrder(tp_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
+            return "SL"
+        
+        if tp_closed and sl_closed:
+            # require check for tp or sl
+            return "closed"

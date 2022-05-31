@@ -91,7 +91,8 @@ def main_validator(f):
             "order_type": {"LIMIT", "MARKET"},
             "stop_loss_type": {"LIMIT", "MARKET", "TRAILING"},
             "take_profit_type": {"LIMIT", "MARKET", "TRAILING"},
-            "exchange": {"binance", "ftx", "ftxus"}
+            "exchange": {"binance", "ftx", "ftxus", "okx"},
+            'action': {"SELL", "BUY"}
         }
         data = request.get_json()
 

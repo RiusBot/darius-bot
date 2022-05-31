@@ -6,7 +6,7 @@ from bot_executor.services.exchange.binance import BinanceClient
 
 
 def order_execute(order_info: dict):
-    logging.info("Start order execute")
+    logging.debug("Start order execute")
     exchange = get_exchange(order_info)
     order = exchange.make_order(order_info)
     tp_order, sl_orer = None, None
@@ -20,8 +20,7 @@ def order_execute(order_info: dict):
         "tp_order": None if tp_order is None else tp_order.get("id", tp_order.get("info", {}).get("id")),
         "price": order.get("average", order.get("price"))
     }
-    logging.info("Results:")
-    logging.info(json.dumps(result, indent=4))
+    logging.debug(f"Results: {result}")
     return result
 
 
@@ -45,7 +44,7 @@ def get_exchange(order_info: dict):
 def order_clean(order_info: dict):
     exchange = get_exchange(order_info)
     if order_info["type"] == "limit":
-        logging.info(f"Start limit order clean for trade {order_info['trade_id']}")
+        logging.debug(f"Start limit order clean for trade {order_info['trade_id']}")
         exchange = get_exchange(order_info)
         status = exchange.clean_limit_order(
             order_info["open_order"],
@@ -53,7 +52,7 @@ def order_clean(order_info: dict):
         )
         result = {"status": status}
     elif order_info["type"] == "oco":
-        logging.info(f"Start oco order clean for trade {order_info['trade_id']}")
+        logging.debug(f"Start oco order clean for trade {order_info['trade_id']}")
         exchange = get_exchange(order_info)
         status = exchange.clean_oco_order(
             order_info["sl_order"],
@@ -64,6 +63,5 @@ def order_clean(order_info: dict):
     else:
         raise Exception(f"Clean order type {order_info['type']} not supported")
 
-    logging.info("Results:")
-    logging.info(json.dumps(result, indent=4))
+    logging.debug(f"Results: {result['status']}")
     return result
