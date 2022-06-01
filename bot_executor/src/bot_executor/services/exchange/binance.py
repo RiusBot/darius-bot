@@ -9,20 +9,9 @@ from .base import Base
 class BinanceClient(Base):
 
     def __init__(self, config: dict):
-        self.config = config
-        self.test_only = config["test"]
-        self.target = config["target"]
-        self.order_type = config["order_type"]
-        self.stop_loss_type = config["stop_loss_type"]
-        self.take_profit_type = config["take_profit_type"]
-        self.quantity = config["quantity"]
-        self.leverage = config["leverage"]
-        self.sl = config.get("stop_loss")
-        self.tp = config.get("take_profit")
-        self.margin = config.get("margin")
-        self.no_duplicate = config["duplicate"]
+        super().__init__(config)
 
-        options = {
+        self.options.update({
             "defaultType": self.target.lower(),
             "adjustForTimeDifference": True,
             "verbose": True,
@@ -32,20 +21,20 @@ class BinanceClient(Base):
                 'future': 'x-61E2GsBt',
                 'delivery': 'x-61E2GsBt',
             },
-        }
-        headers = {}
+        })
+
         self.exchange = ccxt.binance({
             "enableRateLimit": True,
             "apiKey": config["api_key"],
             "secret": config["api_secret"],
-            'options': options,
-            'headers': headers
+            'options': self.options,
+            'headers': self.headers
         })
 
         try:
             self.exchange.check_required_credentials()
         except Exception as e:
-            logging.error(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
+            logging.error(f"Authenticate Requirements: {self.exchange.requiredCredentials}")
             raise e
 
         self.markets = self.exchange.loadMarkets(True)
@@ -108,7 +97,7 @@ class BinanceClient(Base):
                     balance = asset["free"]
         elif self.target == "FUTURE":
             balance = self.exchange.fetch_balance()["info"]['availableBalance']
-        logging.info(f"Balance remain: {balance}")
+        logging.debug(f"Balance remain: {balance}")
         return float(balance)
     
     def get_position(self, symbol: str):
@@ -142,7 +131,7 @@ class BinanceClient(Base):
                 marginRatio = maintenance_margin / margin_balance
             margin = marginRatio
 
-        logging.info(f"Margin level/ratio: {margin}")
+        logging.debug(f"Margin level/ratio: {margin}")
         return margin
 
     def create_market_buy(self, symbol: str):
@@ -150,6 +139,8 @@ class BinanceClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
+        if amount <= 0:
+            return "quantity too small to make order"
         logging.info(f"""
             Market Buy {symbol}
             price : {price}
@@ -164,6 +155,8 @@ class BinanceClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
+        if amount <= 0:
+            return "quantity too small to make order"
         logging.info(f"""
             Limit Buy {symbol}
             Open price : {price}
@@ -183,6 +176,8 @@ class BinanceClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
+        if amount <= 0:
+            return "quantity too small to make order"
         logging.info(f"""
             Market Sell {symbol}
             Amount : {amount}
@@ -197,6 +192,8 @@ class BinanceClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
+        if amount <= 0:
+            return "quantity too small to make order"
         logging.info(f"""
             Limit Sell {symbol}
             Open price : {price}
@@ -431,16 +428,13 @@ class BinanceClient(Base):
 
     def validate_margin(self, symbol: str):
         margin = self.get_margin(symbol)
-        logging.info(f"Current margin: {margin}, minimum margin: {self.margin}.")
-        error_msg = "invalid margin"
+        error_msg = f"invalid margin. Current: {margin}, restrict: {self.margin}"
         if self.target == "FUTURE":
             if margin > self.margin:
-                logging.error(error_msg)
-                raise Exception(error_msg)
+                return error_msg
         elif self.target == "MARGIN":
             if margin < self.margin:
-                logging.error(error_msg)
-                raise Exception(error_msg)
+                return error_msg
 
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         symbol = self.make_symbol(symbol)

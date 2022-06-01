@@ -35,6 +35,8 @@ def main():
         if authenticate(order_info) is False:
             raise Exception("access token is not valid")
         order = order_execute(order_info)
+        if 'error_message' in order:
+            return jsonify(order), 500
         return jsonify(order), 200
     except Exception as e:
         order_info.pop('token', None)

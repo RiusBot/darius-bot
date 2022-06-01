@@ -1,3 +1,4 @@
+import logging
 from flask import request, jsonify
 from functools import wraps
 
@@ -84,7 +85,7 @@ def main_validator(f):
         ]
         string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
         numeric_fields = ["quantity", "leverage"]
-        dict_fields = []
+        dict_fields = ["headers", "options"]
         bool_fields = ["test", "duplicate"]
         enums = {
             "target": {"SPOT", "MARGIN", "FUTURE"},
@@ -95,6 +96,9 @@ def main_validator(f):
             'action': {"SELL", "BUY"}
         }
         data = request.get_json()
+        if "headers" in data or "options" in data:
+            extra = {**data['headers'], **data['options']}
+            logging.info(f"Extra: {extra}")
 
         errors = apply_fields_validators(data, mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields)
         errors += apply_enum_validators(data, enums)

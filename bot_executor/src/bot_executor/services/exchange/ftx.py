@@ -9,43 +9,28 @@ from .base import Base
 class FtxClient(Base):
 
     def __init__(self, config: dict):
-        self.config = config
-        self.test_only = config["test"]
-        self.target = config["target"]
-        self.order_type = config["order_type"]
-        self.stop_loss_type = config["stop_loss_type"]
-        self.take_profit_type = config["take_profit_type"]
-        self.quantity = config["quantity"]
-        self.leverage = config["leverage"]
-        self.sl = config.get("stop_loss")
-        self.tp = config.get("take_profit")
-        self.margin = config.get("margin")
-        self.no_duplicate = config["duplicate"]
-        self.subaccount = config.get("subaccount")
+        super().__init__(config)
 
-        options = {
+        self.options.update({
             "defaultType": self.target.lower(),
             "adjustForTimeDifference": True,
             "verbose": True
-        }
-        headers = {}
+        })
         if self.subaccount:
-            headers = {
-                'FTX-SUBACCOUNT': self.subaccount
-            }
-            logging.info(f"headers: {headers}")
+            self.headers['FTX-SUBACCOUNT'] = self.subaccount
+
         self.exchange = ccxt.ftx({
             "enableRateLimit": True,
             "apiKey": config["api_key"],
             "secret": config["api_secret"],
-            'options': options,
-            'headers': headers,
+            'options': self.options,
+            'headers': self.headers,
         })
 
         try:
             self.exchange.check_required_credentials()
         except Exception as e:
-            logging.info(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
+            logging.error(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
             raise e
 
         self.markets = self.exchange.loadMarkets(True)
@@ -105,6 +90,8 @@ class FtxClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
+        if amount <= 0:
+            return "quantity too small to make order"
         logging.info(f"""
             Market Buy {symbol}
             Open price : {price}
@@ -121,6 +108,8 @@ class FtxClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
+        if amount <= 0:
+            return "quantity too small to make order"
         logging.info(f"""
             Limit Buy {symbol}
             Open price : {price}
@@ -137,6 +126,8 @@ class FtxClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
+        if amount <= 0:
+            return "quantity too small to make order"
         logging.info(f"""
             Market Sell {symbol}
             Open price : {price}
@@ -153,6 +144,8 @@ class FtxClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
+        if amount <= 0:
+            return "quantity too small to make order"
         logging.info(f"""
             Limit Sell {symbol}
             Open price : {price}
@@ -314,11 +307,8 @@ class FtxClient(Base):
 
     def validate_margin(self, symbol: str):
         margin = self.get_margin(symbol)
-        logging.info(f"Current margin: {margin}, minimum margin: {self.margin}.")
-        error_msg = "invalid margin"
         if margin < self.margin:
-            logging.error(error_msg)
-            raise Exception(error_msg)
+            return f"invalid margin. Current: {margin}, restrict: {self.margin}"
 
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         symbol = self.make_symbol(symbol)
@@ -333,14 +323,12 @@ class FtxClient(Base):
         sl_closed = True
 
         if tp_order:
-            closed = True
             for order in open_conditional_order_list:
                 if order['id'] == tp_order:
                     tp_closed = False
                     break
 
         if sl_order:
-            closed = True
             for order in open_conditional_order_list:
                 if order['id'] == sl_order:
                     sl_closed = False

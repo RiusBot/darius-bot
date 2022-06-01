@@ -1,9 +1,27 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple
 
 
 class Base(ABC):
 
+    def __init__(self, config):
+        self.config = config
+        self.test_only = config["test"]
+        self.target = config["target"]
+        self.order_type = config["order_type"]
+        self.stop_loss_type = config["stop_loss_type"]
+        self.take_profit_type = config["take_profit_type"]
+        self.quantity = config["quantity"]
+        self.leverage = config["leverage"]
+        self.sl = config.get("stop_loss")
+        self.tp = config.get("take_profit")
+        self.margin = config.get("margin")
+        self.no_duplicate = config["duplicate"]
+        self.subaccount = config.get("subaccount")
+        self.options = config.get("options", {})
+        self.headers = config.get("headers", {})
+    
     def clean_limit_order(self, open_order: str, symbol: str):
         result = None
         symbol = self.make_symbol(symbol)
@@ -20,27 +38,29 @@ class Base(ABC):
 
     def validate_symbol(self, symbol: str):
         if symbol not in self.markets:
-            error_msg = f"{symbol} invalid symbol"
-            logging.error(error_msg)
-            raise Exception(error_msg)
+            return f"{symbol} invalid symbol"
 
     def validate_order(self, symbol: str, action: str):
 
         if self.test_only:
-            logging.error("Test only")
-            raise Exception("Test only")
+            return "Test only"
 
-        self.validate_symbol(symbol)
+        err_msg = self.validate_symbol(symbol)
+        if err_msg and isinstance(err_msg, str):
+            return err_msg
 
         if self.target != "SPOT" and self.margin:
-            self.validate_margin(symbol)
+            err_msg = self.validate_margin(symbol)
+            if err_msg and isinstance(err_msg, str):
+                return err_msg
 
         if action == "sell" and self.target != "FUTURE":
-            logging.error("short only in future")
-            raise Exception("short only in future")
+            return "short only in future"
 
         if self.no_duplicate:
-            self.validate_duplicate(symbol, action)
+            err_msg = self.validate_duplicate(symbol, action)
+            if err_msg and isinstance(err_msg, str):
+                return err_msg
 
         # if config["minimum_volume"]:
         #     volume = self.get_volume(symbol)
@@ -110,32 +130,37 @@ class Base(ABC):
     def validate_duplicate(self, symbol: str, action: str):
         logging.info(f"check {symbol} {action} {self.target} position if duplicate")
         position = self.get_position(symbol)
-        notional = position['notional']
+        if position:
+            notional = position['notional']
 
-        if self.target == "FUTURE":
-            side = position.get('side')
-            logging.info(f"{symbol} has exists {side} position.")
-            side_map = {
-                "BUY": ("BUY", "LONG"),
-                "SELL": ("SHORT", "SELL")
-            }
-            if side.upper() not in side_map[action]:
-                return  # opposite side then dont count as duplicate
+            if self.target == "FUTURE":
+                side = position.get('side')
+                logging.info(f"{symbol} has exists {side} position.")
+                side_map = {
+                    "BUY": ("BUY", "LONG"),
+                    "SELL": ("SHORT", "SELL")
+                }
+                if side.upper() not in side_map[action]:
+                    return  # opposite side then dont count as duplicate
 
-        if notional > (self.quantity / 20):  # if position too small then dont count as duplicate
-            logging.info(f"{symbol} has {notional} notional.")
-            raise Exception("Position duplicate")
+            if notional > (self.quantity / 20):  # if position too small then dont count as duplicate
+                logging.info(f"{symbol} has {notional} notional.")
+                return "Position duplicate"
 
     @abstractmethod
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         raise NotImplementedError
 
     def make_order(self, order_info: dict) -> dict:
-        logging.info("Start making order.")
+        logging.debug("Start making order.")
         symbol = self.make_symbol(order_info["symbol"])
         action = order_info["action"]
-        logging.info(f"Symbol: {symbol}, Action: {action}")
-        self.validate_order(symbol, action)
+        logging.debug(f"Symbol: {symbol}, Action: {action}")
+
+        err_msg = self.validate_order(symbol, action)
+        if err_msg and isinstance(err_msg, str):
+            logging.error(err_msg)
+            return err_msg
 
         open_order = None
         if action == "BUY":

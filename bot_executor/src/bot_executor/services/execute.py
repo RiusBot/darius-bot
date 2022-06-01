@@ -9,8 +9,14 @@ def order_execute(order_info: dict):
     logging.debug("Start order execute")
     exchange = get_exchange(order_info)
     order = exchange.make_order(order_info)
+    if order and isinstance(order, str):
+        # encountered error
+        err_msg = order
+        return {"error_message": err_msg}
+    
+    
     tp_order, sl_orer = None, None
-    if order:
+    if order and isinstance(order, dict):
         tp_order, sl_order = exchange.make_oco_order(order, order_info)
 
     result = {
