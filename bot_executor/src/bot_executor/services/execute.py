@@ -1,5 +1,6 @@
 import json
 import logging
+from bot_executor.services.exchange.okx import OkxClient
 from bot_executor.services.exchange.ftx import FtxClient
 from bot_executor.services.exchange.ftxus import FtxusClient
 from bot_executor.services.exchange.binance import BinanceClient
@@ -32,19 +33,18 @@ def order_execute(order_info: dict):
 
 def get_exchange(order_info: dict):
     exchange = order_info["exchange"]
-    if exchange == 'binance':
-        exchange = BinanceClient(order_info)
-    elif exchange == "ftx":
-        exchange = FtxClient(order_info)
-    elif exchange == "ftxus":
-        exchange = FtxusClient(order_info)
-    # elif exchange == "gate":
-    #     pass
-    # elif exchange == "mexc":
-    #     pass
-    else:
+    exchange_dict = {
+        'binance': BinanceClient,
+        "ftx": FtxClient,
+        "ftxus": FtxusClient,
+        "okx": OkxClient,
+        "gate": None,
+        "mexc": None
+    }
+    exchange = exchange_dict.get(exchange)
+    if exchange is None:
         raise Exception(f"Exchange {exchange} not supprorted.")
-    return exchange
+    return exchange(order_info)
 
 
 def order_clean(order_info: dict):

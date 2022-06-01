@@ -83,7 +83,7 @@ def main_validator(f):
             # "scalp_take_profit",
             # "price",
         ]
-        string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
+        string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target", "password"]
         numeric_fields = ["quantity", "leverage"]
         dict_fields = ["headers", "options"]
         bool_fields = ["test", "duplicate"]
@@ -97,7 +97,7 @@ def main_validator(f):
         }
         data = request.get_json()
         if "headers" in data or "options" in data:
-            extra = {**data['headers'], **data['options']}
+            extra = {**data.get('headers', {}), **data.get('options', {})}
             logging.info(f"Extra: {extra}")
 
         errors = apply_fields_validators(data, mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields)
