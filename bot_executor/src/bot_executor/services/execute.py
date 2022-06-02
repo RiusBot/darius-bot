@@ -14,9 +14,8 @@ def order_execute(order_info: dict):
         # encountered error
         err_msg = order
         return {"error_message": err_msg}
-    
-    
-    tp_order, sl_orer = None, None
+
+    tp_order, sl_order = None, None
     if order and isinstance(order, dict):
         tp_order, sl_order = exchange.make_oco_order(order, order_info)
 

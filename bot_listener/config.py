@@ -2,6 +2,8 @@ import os
 import yaml
 import logging
 
+from worker.services.auth import fetch_backend_url_firestore
+
 
 usingProjectId = os.getenv('project_id', 'local')
 
@@ -27,12 +29,17 @@ def configure_logging():
 
 def read_config():
     if usingProjectId == "local":
-        yaml_file_path = os.path.join(os.path.dirname(__file__), "../config.yaml")
+        yaml_file_path = os.path.join(os.path.dirname(__file__), "config.yaml")
         with open(yaml_file_path) as yaml_file:
             config = yaml.safe_load(yaml_file)
         return config
     else:
-        pass  # read from firestore
+        backend_url = fetch_backend_url_firestore()
+        backend_endpoint = f"{backend_url}/api/v1/execute_bot_signal"
+        config = {
+            'backend_endpoint': [backend_endpoint]
+        }
+        return config
 
 
 configure_logging()

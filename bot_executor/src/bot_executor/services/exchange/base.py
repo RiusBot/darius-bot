@@ -21,7 +21,7 @@ class Base(ABC):
         self.subaccount = config.get("subaccount")
         self.options = config.get("options", {})
         self.headers = config.get("headers", {})
-    
+
     def clean_limit_order(self, open_order: str, symbol: str):
         result = None
         symbol = self.make_symbol(symbol)
@@ -53,9 +53,6 @@ class Base(ABC):
             err_msg = self.validate_margin(symbol)
             if err_msg and isinstance(err_msg, str):
                 return err_msg
-
-        if action == "sell" and self.target != "FUTURE":
-            return "short only in future"
 
         if self.no_duplicate:
             err_msg = self.validate_duplicate(symbol, action)
@@ -143,9 +140,17 @@ class Base(ABC):
                 if side.upper() not in side_map[action]:
                     return  # opposite side then dont count as duplicate
 
-            if notional > (self.quantity / 20):  # if position too small then dont count as duplicate
-                logging.info(f"{symbol} has {notional} notional.")
-                return "Position duplicate"
+                if notional > (self.quantity / 20):  # if position too small then dont count as duplicate
+                    logging.info(f"{symbol} has {notional} notional.")
+                    return "Position duplicate"
+
+            else:
+                if action == "BUY" and notional > (self.quantity / 20):
+                    logging.info(f"{symbol} has {notional} notional.")
+                    return "Position duplicate"
+                elif action == "SELL" and -notional > (self.quantity / 20):
+                    logging.info(f"{symbol} has {notional} notional.")
+                    return "Position duplicate"
 
     @abstractmethod
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
@@ -176,7 +181,7 @@ class Base(ABC):
         return open_order
 
     def make_oco_order(self, open_order: dict, order_info: dict) -> Tuple[dict, dict]:
-        logging.info("Start making OCO order.")
+        logging.debug("Start making OCO order.")
         sl_order = None
         tp_order = None
         symbol = self.make_symbol(order_info["symbol"])

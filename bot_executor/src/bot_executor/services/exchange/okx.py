@@ -10,8 +10,8 @@ class OkxClient(Base):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        
-        self.tdMode = "cross" if self.target != 'SPOT' else 'cash'
+
+        self.tdMode = "cross"  # if self.target != 'SPOT' else 'cash'
         defaultType = {
             'SPOT': 'SPOT',
             'FUTURE': 'SWAP',
@@ -45,12 +45,6 @@ class OkxClient(Base):
 
     def market_postprocess(self):
         pass
-
-    def get_position_param(self, side: str):
-        if self.target == "FUTURE":
-            return {"posSide": self.get_position_side(side)}
-        else:
-            return {}
 
     def get_position_mode(self):
         # true: hedge (long_short_mode), false: one-way (net_mode)
@@ -127,14 +121,11 @@ class OkxClient(Base):
             Amount : {amount}
         """)
         params = {
-            'posSide': self.get_position_param("BUY")['posSide'],
+            'posSide': self.get_position_side("BUY"),
             'lever': self.leverage,
             'tdMode': self.tdMode,
-            'ccy': "USDT",
-            'tgtCcy': 'quote_ccy'
         }
-        # order = self.exchange.createMarketBuyOrder(symbol, amount, params=params)
-        order = self.exchange.get(symbol, amount, params=params)
+        order = self.exchange.createMarketBuyOrder(symbol, amount, params=params)
         order = self.exchange.fetchOrder(symbol=symbol, id=order['id'])
         return order
 
@@ -151,7 +142,7 @@ class OkxClient(Base):
             Amount : {amount}
         """)
         params = {
-            'posSide': self.get_position_param("BUY")['posSide'],
+            'posSide': self.get_position_side("BUY"),
             'lever': self.leverage,
             'tdMode': self.tdMode
         }
@@ -176,14 +167,13 @@ class OkxClient(Base):
             Price: {price}
         """)
         params = {
-            'posSide': self.get_position_param("BUY")['posSide'],
+            'posSide': self.get_position_side("SELL"),
             'lever': self.leverage,
-            'tdMode': self.tdMode
+            'tdMode': self.tdMode,
         }
-        if self.target != "FUTURE":
-            params["ordType"] = "ioc"
-        order = self.exchange.createMarketSellOrder(symbol, amount, params=params)
+        order = self.exchange.createMarketSellOrder(symbol=symbol, amount=amount, params=params)
         order = self.exchange.fetchOrder(symbol=symbol, id=order['id'])
+        print(order)
         return order
 
     def create_limit_sell(self, symbol: str):
@@ -199,7 +189,7 @@ class OkxClient(Base):
             Amount : {amount}
         """)
         params = {
-            'posSide': self.get_position_param("SELL")['posSide'],
+            'posSide': self.get_position_side("SELL"),
             'lever': self.leverage,
             'tdMode': self.tdMode
         }
@@ -242,9 +232,9 @@ class OkxClient(Base):
             'instId': self.markets[symbol]['id'],
             'tdMode': self.tdMode,
             'side': 'sell',
-            'posSide': self.get_position_param('SELL')['posSide'],
+            'posSide': self.get_position_side("SELL"),
             'sz': amount,
-            'reduceOnly': True,
+            'reduceOnly': (self.target != "SPOT"),
         }
         sl_params, tp_params = self.create_oco_params(params, sl_price, tp_price)
         sl_order = self.exchange.private_post_trade_order_algo(params=sl_params)
@@ -278,16 +268,16 @@ class OkxClient(Base):
             return tp_order, sl_order
 
         params = {
-            'instId': symbol,
+            'instId': self.markets[symbol]['id'],
             'tdMode': self.tdMode,
             'side': 'buy',
-            'posSide': self.get_position_param('BUY')['posSide'],
+            'posSide': self.get_position_side("BUY"),
             'sz': amount,
-            'reduceOnly': True,
+            'reduceOnly': (self.target != "SPOT"),
         }
         sl_params, tp_params = self.create_oco_params(params, sl_price, tp_price)
-        sl_order = self.exchange.private_post_trade_order_algo(parmas=sl_params)
-        tp_order = self.exchange.private_post_trade_order_algo(parmas=tp_params)
+        sl_order = self.exchange.private_post_trade_order_algo(params=sl_params)
+        tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
         return tp_order, sl_order
 
     def create_oco_params(self, params: dict, sl_price: float, tp_price: float):
