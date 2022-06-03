@@ -36,14 +36,14 @@ def main():
             raise Exception("access token is not valid")
         order = order_execute(order_info)
         if 'error_message' in order:
-            return jsonify(order), 500
+            return jsonify(order), 400
         return jsonify(order), 200
     except Exception as e:
         order_info.pop('token', None)
         logging.error(f"Order info: {order_info}")
         logging.exception("")
         traceback.format_exc()
-        return jsonify({"error_message": str(e)}), 500
+        return jsonify({"error_message": repr(e)}), 500
 
 
 @app.route("/clean", methods=["POST"])
@@ -60,7 +60,7 @@ def clean():
         logging.error(f"Order info: {order_info}")
         logging.exception("")
         traceback.format_exc()
-        return jsonify({"error_message": str(e)}), 500
+        return jsonify({"error_message": repr(e)}), 500
 
 
 if __name__ == "__main__":

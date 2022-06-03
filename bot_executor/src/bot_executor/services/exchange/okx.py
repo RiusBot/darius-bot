@@ -202,9 +202,9 @@ class OkxClient(Base):
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
-        amount = float(open_order["amount"]) * 0.995
+        amount = float(open_order["amount"])
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
+        price = float(open_order.get("average", open_order.get("price", self.get_price(symbol))))
         if tp_price is None:
             tp_price = price * (1 + take_profit)
         if sl_price is None:
@@ -242,9 +242,9 @@ class OkxClient(Base):
         return tp_order, sl_order
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
-        amount = float(open_order["amount"]) * 0.995
+        amount = float(open_order["amount"])
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
+        price = float(open_order.get("average", open_order.get("price", self.get_price(symbol))))
         if tp_price is None:
             tp_price = price * (1 - take_profit)
         if sl_price is None:

@@ -128,7 +128,7 @@ class Base(ABC):
         logging.info(f"check {symbol} {action} {self.target} position if duplicate")
         position = self.get_position(symbol)
         if position:
-            notional = position['notional']
+            notional = position.get('notional', 0)
 
             if self.target == "FUTURE":
                 side = position.get('side')

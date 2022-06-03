@@ -77,9 +77,9 @@ class FtxClient(Base):
             positions = self.exchange.fetchPositions()
             for position in positions:
                 if "symbol" in position:
-                    position = position.get("info", {})
-                if position.get('future') == symbol and position.get('entryPrice') and position.get('side'):
-                    return position
+                    info = position.get("info", {})
+                    if info.get('future') == symbol and info.get('entryPrice') and info.get('side'):
+                        return position
 
     def get_margin(self, symbol: str) -> float:
         margin = self.exchange.private_get_account()["result"]["marginFraction"]

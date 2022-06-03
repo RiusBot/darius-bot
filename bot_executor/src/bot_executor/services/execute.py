@@ -1,4 +1,5 @@
 import json
+import ccxt
 import logging
 from bot_executor.services.exchange.okx import OkxClient
 from bot_executor.services.exchange.ftx import FtxClient
