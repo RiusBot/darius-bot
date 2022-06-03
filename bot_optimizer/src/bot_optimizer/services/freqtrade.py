@@ -127,6 +127,10 @@ def freqtrade_hyperopt(db, json_payload: dict):
     create = json_payload.get('create', True)
     timerange, start_at, end_at = process_hyperopt_timerange(json_payload['timerange'], days)
     output = defaultdict(dict)
+    
+    # ignore channel
+    ignore_channel = ["WEBHOOK", "AIRFORCE7", "CTA", "SPACEFORCE", "ACDC"]
+    channel_list = list(set(channel_list) - set(ignore_channel))
 
     for channel in channel_list:
 
@@ -196,7 +200,11 @@ def freqtrade_backtest(db, json_payload: dict):
     loss_list = json_payload.get('loss', ["SharpeHyperOptLoss"])
     create = json_payload.get('create', True)
     output = defaultdict(dict)
-    
+
+    # ignore channel
+    ignore_channel = ["WEBHOOK"]
+    channel_list = list(set(channel_list) - set(ignore_channel))
+
     # remove hyperopt params file
     if os.path.isfile("user_data/strategies/riusbot.json"):
         os.remove("user_data/strategies/riusbot.json")

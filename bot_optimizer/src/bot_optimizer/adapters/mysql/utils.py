@@ -82,7 +82,6 @@ def get_hyperopt(db, channel: str, loss: str, start_at: datetime):
 def get_channel(db):
     from bot_optimizer.adapters.mysql.model import Message
     channel_list = Message.query.with_entities(Message.channel).distinct().all()
-    channel_list = [i[0] for i in channel_list if i[0] != "WEBHOOK"]
     return channel_list
 
 
