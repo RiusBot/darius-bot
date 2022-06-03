@@ -1,5 +1,6 @@
 import logging
 import json
+import ccxt
 import traceback
 from flask import Flask, request, jsonify, Response
 
@@ -38,12 +39,15 @@ def main():
         if 'error_message' in order:
             return jsonify(order), 400
         return jsonify(order), 200
-    except Exception as e:
+    except ccxt.BaseError as e:
         order_info.pop('token', None)
         logging.error(f"Order info: {order_info}")
         logging.exception("")
         traceback.format_exc()
         return jsonify({"error_message": repr(e)}), 500
+    except Exception as e:
+        logging.exception("")
+        return jsonify({"error_message": 'Bot Unexpected Error'}), 500
 
 
 @app.route("/clean", methods=["POST"])
