@@ -22,11 +22,13 @@ courage_channel = None
 moon_channel = None
 acdc_channel = None
 airforce_channel = None
+cta_channel = None
 logging.info(config["backend_endpoint"])
 
 
 async def get_channels():
-    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel, acdc_channel, airforce_channel
+    global test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel, acdc_channel, airforce_channel, cta_channel
+
     logging.info("Get channel")
     test_channel = await telegram_client.get_entity('test')
     rose_channel = await telegram_client.get_entity('🌹 Rose Premium Signal For Bot')
@@ -40,13 +42,15 @@ async def get_channels():
     moon_channel = await telegram_client.get_entity('Moon Indicator')
     acdc_channel = await telegram_client.get_entity('✈️ACDC策略快訊✈️')
     airforce_channel = await telegram_client.get_entity('空軍司令部(F)')
-    for i in [vegas_channel, courage_channel, perpetual_channel, moon_channel, acdc_channel, airforce_channel]:
+    cta_channel = await telegram_client.get_entity('CTA Strategy')
+
+    for i in [vegas_channel, courage_channel, perpetual_channel, moon_channel, acdc_channel, airforce_channel, cta_channel]:
         print(i)
         print()
     
     await telegram_client.send_message(entity=test_channel, message='start listener')
     
-    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel, acdc_channel, airforce_channel
+    return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel, acdc_channel, airforce_channel, cta_channel
 
 
 async def get_IDs():
@@ -143,6 +147,7 @@ async def handler(event):
 #     logging.info(json.dumps(info, indent=4))
 #     await send_to_execute(info)
 
+
 @telegram_client.on(events.NewMessage(from_users=moon_channel, forwards=False))
 async def moon_handler(event):
     # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
@@ -157,6 +162,19 @@ async def vegas_handler(event):
     info = parse.VegasParser().parse(event)
     logging.info(json.dumps(info, indent=4))
     await send_to_execute(info)
+
+
+@telegram_client.on(events.NewMessage(from_users=cta_channel, forwards=False))
+async def cta_handler(event):
+    # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
+    buy_info = parse.CtaParser("BUY").parse(event)
+    sell_info = parse.CtaParser("SELL").parse(event)
+
+    logging.info(json.dumps(buy_info, indent=4))
+    await send_to_execute(buy_info)
+
+    logging.info(json.dumps(sell_info, indent=4))
+    await send_to_execute(sell_info)
 
 
 @telegram_client.on(events.NewMessage(from_users=justin_channel, forwards=False))

@@ -8,6 +8,7 @@ from .courage import CourageParser
 from .moon import MoonParser
 from .acdc import ACDCParser
 from .airforce import AirforceParser
+from .cta import CtaParser
 
 __all__ = [
     "PerpetualParser",
@@ -20,4 +21,5 @@ __all__ = [
     "MoonParser",
     "ACDCParser",
     "AirforceParser",
+    "CtaParser",
 ]

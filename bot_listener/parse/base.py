@@ -55,6 +55,7 @@ class BaseParser(ABC):
 
     @abstractmethod
     def parse_symbol(self):
+        # return token
         raise NotImplementedError
 
     @abstractmethod
