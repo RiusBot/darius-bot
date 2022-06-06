@@ -13,6 +13,7 @@ class CtaParser(BaseParser):
         info = json.loads(message)
         symbol_list = []
         for symbol, amount in info.items():
+            symbol = symbol.replace("USDT", "").replace("BUSD", "")
             if self.action == "BUY" and amount > 0:
                 symbol_list.append(symbol)
             elif self.action == "SELL" and amount < 0:

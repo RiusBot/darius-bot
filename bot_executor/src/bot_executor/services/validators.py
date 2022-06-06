@@ -96,7 +96,7 @@ def main_validator(f):
             'action': {"SELL", "BUY"}
         }
         data = request.get_json()
-        if "headers" in data or "options" in data:
+        if data.get("headers") or data.get("options"):
             extra = {**data.get('headers', {}), **data.get('options', {})}
             logging.info(f"Extra: {extra}")
 

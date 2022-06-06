@@ -4,6 +4,7 @@ import logging
 from typing import List, Dict, Tuple
 
 from .base import Base
+from bot_executor.services.exchange import binance_markets
 
 
 class BinanceClient(Base):
@@ -37,7 +38,12 @@ class BinanceClient(Base):
             logging.error(f"Authenticate Requirements: {self.exchange.requiredCredentials}")
             raise e
 
-        self.markets = self.exchange.loadMarkets(True)
+        global binance_markets
+        if binance_markets:
+            self.markets = binance_markets
+        else:
+            self.markets = self.exchange.loadMarkets(True)
+            binance_markets = self.markets
         self.market_postprocess()
     
     def market_postprocess(self):

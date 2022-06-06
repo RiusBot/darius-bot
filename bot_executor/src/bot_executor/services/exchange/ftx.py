@@ -4,6 +4,7 @@ import logging
 from typing import List, Dict, Tuple
 
 from .base import Base
+from bot_executor.services.exchange import ftx_markets
 
 
 class FtxClient(Base):
@@ -33,7 +34,13 @@ class FtxClient(Base):
             logging.error(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
             raise e
 
-        self.markets = self.exchange.loadMarkets(True)
+        global ftx_markets
+        if ftx_markets:
+            self.markets = ftx_markets
+        else:
+            self.markets = self.exchange.loadMarkets(True)
+            ftx_markets = self.markets
+
         self.markets = {value.get('id', key): value for key, value in self.markets.items()}
         self.exchange.markets = self.markets
     
