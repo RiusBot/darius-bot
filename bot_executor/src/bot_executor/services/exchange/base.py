@@ -22,6 +22,13 @@ class Base(ABC):
         self.options = config.get("options", {})
         self.headers = config.get("headers", {})
 
+    def scalp_quantity(self):
+        if isinstance(self.config.get("scalp_quantity"), float):
+            remain_balance = self.get_balance()
+            scalp_quantity = abs(self.config["scalp_quantity"])
+            self.quantity = scalp_quantity * remain_balance
+            logging.info(f"Balance: {remain_balance}, scalp quantity: {scalp_quantity}, quantity: {self.quantity}")
+
     def clean_limit_order(self, open_order: str, symbol: str):
         result = None
         symbol = self.make_symbol(symbol)

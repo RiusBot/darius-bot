@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Tuple
 
 from .base import Base
-from bot_executor.services.exchange import binance_markets
+from bot_executor.services.exchange import binance_spot_markets, binance_future_markets
 
 
 class BinanceClient(Base):
@@ -38,14 +38,29 @@ class BinanceClient(Base):
             logging.error(f"Authenticate Requirements: {self.exchange.requiredCredentials}")
             raise e
 
-        global binance_markets
-        if binance_markets:
-            self.markets = binance_markets
-        else:
-            self.markets = self.exchange.loadMarkets(True)
-            binance_markets = self.markets
+        self.load_markets()
         self.market_postprocess()
-    
+        self.scalp_quantity()
+
+    def load_markets(self):
+
+        global binance_spot_markets, binance_future_markets
+
+        if self.target == "FUTURE":
+            if binance_future_markets:
+                self.markets = binance_future_markets
+                self.exchange.markets = binance_future_markets
+            else:
+                self.markets = self.exchange.loadMarkets(True)
+                binance_future_markets = self.markets
+        else:
+            if binance_spot_markets:
+                self.markets = binance_spot_markets
+                self.exchange.markets = binance_spot_markets
+            else:
+                self.markets = self.exchange.loadMarkets(True)
+                binance_spot_markets = self.markets
+
     def market_postprocess(self):
         if self.target.lower() == "future":
             tmp = {

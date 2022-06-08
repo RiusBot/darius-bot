@@ -11,6 +11,7 @@ class FtxClient(Base):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.externalReferralProgram = None
 
         self.options.update({
             "defaultType": self.target.lower(),
@@ -34,15 +35,19 @@ class FtxClient(Base):
             logging.error(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
             raise e
 
+        self.load_markets()
+        self.markets = {value.get('id', key): value for key, value in self.markets.items()}
+        self.exchange.markets = self.markets
+        self.scalp_quantity()
+
+    def load_markets(self):
         global ftx_markets
         if ftx_markets:
             self.markets = ftx_markets
+            self.exchange.markets = ftx_markets
         else:
             self.markets = self.exchange.loadMarkets(True)
             ftx_markets = self.markets
-
-        self.markets = {value.get('id', key): value for key, value in self.markets.items()}
-        self.exchange.markets = self.markets
     
     def make_symbol(self, symbol: str):
         if self.target != "FUTURE":
@@ -67,7 +72,7 @@ class FtxClient(Base):
     def get_balance(self):
         balance = 0
         info = self.exchange.fetch_balance()["info"]
-        for coin in info["reuslt"]:
+        for coin in info["result"]:
             if coin['coin'] == "USD":
                 balance = coin["availableWithoutBorrow"]
         return float(balance)
@@ -104,7 +109,7 @@ class FtxClient(Base):
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createMarketBuyOrder(symbol, amount)
+        order = self.exchange.createMarketBuyOrder(symbol, amount, params={'externalReferralProgram': self.externalReferralProgram})
         if order["price"] is None:
             order["price"] = price
         logging.info(f"Open average price : {order['average']}")
@@ -122,7 +127,12 @@ class FtxClient(Base):
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitBuyOrder(symbol, amount, price, params={'ioc': (self.target != "FUTURE")})
+        order = self.exchange.createLimitBuyOrder(
+            symbol,
+            amount,
+            price,
+            params={'ioc': (self.target != "FUTURE"), 'externalReferralProgram': self.externalReferralProgram}
+        )
         order["average"] = order.get("price", price)
         if self.target != "FUTURE":
             order["amount"] = float(order.get("filled", 0))
@@ -158,7 +168,12 @@ class FtxClient(Base):
             Open price : {price}
             Amount : {amount}
         """)
-        order = self.exchange.createLimitSellOrder(symbol, amount, price, params={'ioc': (self.target != "FUTURE")})
+        order = self.exchange.createLimitSellOrder(
+            symbol,
+            amount,
+            price,
+            params={'ioc': (self.target != "FUTURE"), 'externalReferralProgram': self.externalReferralProgram}
+        )
         order["average"] = order.get("price", price)
         if self.target != "FUTURE":
             order["amount"] = float(order.get("filled", 0))
@@ -201,7 +216,8 @@ class FtxClient(Base):
             "side": "sell",
             "size": amount,
             "type": "takeProfit",
-            "reduceOnly": True
+            "reduceOnly": True,
+            'externalReferralProgram': self.externalReferralProgram
         }
         if self.take_profit_type != "TRAILING":
             params["triggerPrice"] = tp_price
@@ -219,7 +235,8 @@ class FtxClient(Base):
             "side": "sell",
             "size": amount,
             "type": "stop",
-            "reduceOnly": True
+            "reduceOnly": True,
+            'externalReferralProgram': self.externalReferralProgram
         }
         if self.stop_loss_type != "TRAILING":
             params["triggerPrice"] = sl_price
@@ -269,7 +286,8 @@ class FtxClient(Base):
             "side": "buy",
             "size": amount,
             "type": "takeProfit",
-            "reduceOnly": True
+            "reduceOnly": True,
+            'externalReferralProgram': self.externalReferralProgram
         }
         if self.take_profit_type != "TRAILING":
             params["triggerPrice"] = tp_price
@@ -287,7 +305,8 @@ class FtxClient(Base):
             "side": "buy",
             "size": amount,
             "type": "stop",
-            "reduceOnly": True
+            "reduceOnly": True,
+            'externalReferralProgram': self.externalReferralProgram
         }
         if self.stop_loss_type != "TRAILING":
             params["triggerPrice"] = sl_price

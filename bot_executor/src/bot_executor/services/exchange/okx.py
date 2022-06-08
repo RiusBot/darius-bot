@@ -42,6 +42,7 @@ class OkxClient(Base):
 
         self.markets = self.exchange.loadMarkets(True)
         self.market_postprocess()
+        self.scalp_quantity()
 
     def market_postprocess(self):
         pass
@@ -234,11 +235,11 @@ class OkxClient(Base):
             'side': 'sell',
             'posSide': self.get_position_side("SELL"),
             'sz': amount,
-            'reduceOnly': (self.target != "SPOT"),
         }
-        sl_params, tp_params = self.create_oco_params(params, sl_price, tp_price)
+        sl_params, tp_params = self.create_oco_params(params, sl_price, tp_price, price, take_profit, stop_loss)
         sl_order = self.exchange.private_post_trade_order_algo(params=sl_params)
-        tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
+        if self.take_profit_type != "TRAILING":
+            tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
         return tp_order, sl_order
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
@@ -273,18 +274,18 @@ class OkxClient(Base):
             'side': 'buy',
             'posSide': self.get_position_side("BUY"),
             'sz': amount,
-            'reduceOnly': (self.target != "SPOT"),
         }
-        sl_params, tp_params = self.create_oco_params(params, sl_price, tp_price)
+        sl_params, tp_params = self.create_oco_params(params, sl_price, tp_price, price, take_profit, stop_loss)
         sl_order = self.exchange.private_post_trade_order_algo(params=sl_params)
-        tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
+        if self.take_profit_type != "TRAILING":
+            tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
         return tp_order, sl_order
 
-    def create_oco_params(self, params: dict, sl_price: float, tp_price: float):
+    def create_oco_params(self, params: dict, sl_price: float, tp_price: float, price: float, take_profit: float, stop_loss: float):
 
         if self.stop_loss_type == "TRAILING":
             sl_params = {
-                'callbackRatio': min(max(stop_loss * 100, 0.1), 50),
+                'callbackRatio': min(max(stop_loss, 0.001), 1),
                 'activePx': price,
                 'ordType': 'move_order_stop',
             }
@@ -292,12 +293,13 @@ class OkxClient(Base):
             sl_params = {
                 'slTriggerPx': sl_price,
                 'slOrdPx': sl_price if self.stop_loss_type == "LIMIT" else -1,  # -1 for market close
-                'ordType': 'conditional'
+                'ordType': 'conditional',
+                'reduceOnly': (self.target != "SPOT"),
             }
 
         if self.take_profit_type == "TRAILING":
             tp_params = {
-                'callbackRatio': min(max(take_profit * 100, 0.1), 50),
+                'callbackRatio': min(max(take_profit, 0.001), 1),
                 'activePx': price,
                 'ordType': 'conditional',
             }
@@ -305,7 +307,8 @@ class OkxClient(Base):
             tp_params = {
                 'tpTriggerPx': tp_price,
                 'tpOrdPx': tp_price if self.take_profit_type == "LIMIT" else -1,  # -1 for market close
-                'ordType': 'conditional'
+                'ordType': 'conditional',
+                'reduceOnly': (self.target != "SPOT"),
             }
 
         return {**params, **sl_params}, {**params, **tp_params}
