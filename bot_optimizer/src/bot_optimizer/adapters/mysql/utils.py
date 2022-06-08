@@ -82,7 +82,7 @@ def get_hyperopt(db, channel: str, loss: str, start_at: datetime):
 def get_channel(db):
     from bot_optimizer.adapters.mysql.model import Message
     channel_list = Message.query.with_entities(Message.channel).distinct().all()
-    return channel_list
+    return [i[0] for i in channel_list]
 
 
 def get_message(db, channel: str, start_at: datetime, end_at: datetime):
@@ -100,6 +100,7 @@ def get_message(db, channel: str, start_at: datetime, end_at: datetime):
     ).all():
         message = message.to_dict()
         message.pop("created_at")
+        message.pop("updated_at")
         message["message_timestamp"] = message["message_timestamp"].timestamp()
         message_list.append(message)
 

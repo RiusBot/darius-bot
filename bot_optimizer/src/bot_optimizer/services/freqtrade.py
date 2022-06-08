@@ -1,5 +1,6 @@
 import os
 import ccxt
+import time
 import json
 import shutil
 import pickle
@@ -22,6 +23,7 @@ def freqtrade_run(sysargv: str):
         args['func'](args)
     else:
         raise Exception("func missing")
+    time.sleep(1)
 
 
 def read_message(
@@ -59,7 +61,7 @@ def freqtrade_init(
     params: dict = {}
 ):
     logging.info("freqtrade init")
-    
+
     message, pairs = read_message(db, channel, exchange, start_at, end_at)
     freqtrade_create_userdir()
     freqtrade_create_config(params, message, pairs)
@@ -118,7 +120,7 @@ def process_backtest_timerange(timerange: str):
 
 def freqtrade_hyperopt(db, json_payload: dict):
     logging.info("freqtrade hyperopt")
-    
+
     exchange = json_payload.get('exchange', 'binance')
     timeframe = json_payload.get('timeframe', '1h')
     days = json_payload.get('days', '90')
@@ -127,7 +129,7 @@ def freqtrade_hyperopt(db, json_payload: dict):
     create = json_payload.get('create', True)
     timerange, start_at, end_at = process_hyperopt_timerange(json_payload['timerange'], days)
     output = defaultdict(dict)
-    
+
     # ignore channel
     ignore_channel = ["WEBHOOK", "AIRFORCE7", "CTA", "SPACEFORCE", "ACDC"]
     channel_list = list(set(channel_list) - set(ignore_channel))
@@ -219,7 +221,6 @@ def freqtrade_backtest(db, json_payload: dict):
                 backtest_result = None
                 hyperopt = get_hyperopt(db, channel, loss, start_at)
                 params = json.loads(hyperopt.to_dict()['params'])
-                params = {'take_profit': 0.01, 'stop_loss': 0.01}
                 freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange, params)
 
                 sysargv = f"backtesting --strategy-list riusbot riusbot_sell --timeframe {timeframe} --timerange {timerange} --eps"

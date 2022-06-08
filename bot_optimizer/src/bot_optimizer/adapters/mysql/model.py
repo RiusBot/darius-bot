@@ -18,7 +18,7 @@ class serialize():
 class Performance(db.Model, serialize):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-    # updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
     start_at = db.Column(db.DateTime)
     end_at = db.Column(db.DateTime)
     result = db.Column(db.Text, nullable=False)
@@ -34,7 +34,7 @@ class Hyperopt(db.Model, serialize):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     start_at = db.Column(db.DateTime)
     end_at = db.Column(db.DateTime)
-    # updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
     params = db.Column(db.String(4096), nullable=False)
     channel = db.Column(db.String(32), nullable=False)
     loss = db.Column(db.String(32), nullable=False)
@@ -49,6 +49,7 @@ class Hyperopt(db.Model, serialize):
 class Message(db.Model, serialize):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
     symbol = db.Column(db.String(32), nullable=False)
     action = db.Column(db.String(32), nullable=False)
     channel = db.Column(db.String(32), nullable=False)
