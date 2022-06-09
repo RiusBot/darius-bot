@@ -52,6 +52,7 @@ class Message(db.Model, serialize):
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), server_onupdate=db.func.now())
     symbol = db.Column(db.String(32), nullable=False)
     action = db.Column(db.String(32), nullable=False)
+    quantity = db.Column(db.Float, nullable=True)
     channel = db.Column(db.String(32), nullable=False)
     message_timestamp = db.Column(db.DateTime, nullable=False)
     is_del = db.Column(db.Boolean, nullable=False)

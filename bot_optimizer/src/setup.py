@@ -22,7 +22,7 @@ setup(
         "mysqlclient==2.1.0",
         "pyyaml",
         "sqlalchemy==1.4.31",
-        "freqtrade==2022.1",
+        "freqtrade==2022.5",
         'dateparser==1.1.0'
     ]
 )

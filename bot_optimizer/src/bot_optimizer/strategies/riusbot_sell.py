@@ -3,6 +3,8 @@
 
 import json
 import logging
+from typing import Optional
+from datetime import datetime
 from collections import defaultdict
 
 # --- Do not remove these libs ---
@@ -98,10 +100,12 @@ class riusbot_sell(IStrategy):
             for trade in trades:
                 symbol = trade["symbol"]
                 action = trade["action"]
+                quantity = abs(trade["quantity"]) if trade["quantity"] else 0
                 timestamp = trade["message_timestamp"]
                 self.my_trade[symbol].append({
                     'action': action,
                     "timestamp": timestamp,
+                    "quantity": quantity,
                 })
 
             if config.get('riusbot_params'):
@@ -156,7 +160,9 @@ class riusbot_sell(IStrategy):
         :param metadata: Additional information, like the currently traded pair
         :return: a Dataframe with all mandatory indicators for the strategies
         """
-        
+
+        dataframe['riusbot_quantity'] = 0
+
         # Momentum Indicators
         # ------------------------------------
 
@@ -365,6 +371,19 @@ class riusbot_sell(IStrategy):
 
         return dataframe
 
+    def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
+                            proposed_stake: float, min_stake: float, max_stake: float,
+                            entry_tag: Optional[str], side: str, **kwargs) -> float:
+
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair=pair, timeframe=self.timeframe)
+        current_candle = dataframe.iloc[-1].squeeze()
+
+        if current_candle['riusbot_quantity']:
+            return self.wallets.get_total_stake_amount() * current_candle['riusbot_quantity']
+
+        # Use default stake amount.
+        return proposed_stake
+  
     def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
         Based on TA indicators, populates the buy signal for the given dataframe
@@ -379,6 +398,9 @@ class riusbot_sell(IStrategy):
                 ts = pd.Timestamp(i["timestamp"], unit='s').tz_localize('utc')
                 idx = dataframe.date.searchsorted(ts)
                 dataframe.loc[idx-1, "buy"] = 1
+                
+                if i["quantity"]:
+                    dataframe.loc[idx-1, "riusbot_quantity"] = i["quantity"]
 
         
         # dataframe.loc[
