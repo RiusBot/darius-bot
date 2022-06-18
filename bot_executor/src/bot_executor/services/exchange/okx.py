@@ -11,7 +11,6 @@ class OkxClient(Base):
     def __init__(self, config: dict):
         super().__init__(config)
 
-        self.tdMode = "cross"  # if self.target != 'SPOT' else 'cash'
         defaultType = {
             'SPOT': 'SPOT',
             'FUTURE': 'SWAP',
@@ -43,13 +42,21 @@ class OkxClient(Base):
         self.markets = self.exchange.loadMarkets(True)
         self.market_postprocess()
         self.scalp_quantity()
+        self.account_config = self.exchange.private_get_account_config()['data'][0]
+        self.set_tdmode()
 
     def market_postprocess(self):
         pass
 
+    def set_tdmode(self):
+        if self.account_config['acctLv'] == "1":
+            self.tdMode = "cash"
+        else:
+            self.tdMode = "cross"
+
     def get_position_mode(self):
         # true: hedge (long_short_mode), false: one-way (net_mode)
-        return self.exchange.private_get_account_config()['data'][0]['posMode'] == "long_short_mode"
+        return self.account_config['posMode'] == "long_short_mode"
 
     def get_position_side(self, side: str):
         if self.get_position_mode():

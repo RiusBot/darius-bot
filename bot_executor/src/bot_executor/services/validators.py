@@ -84,7 +84,7 @@ def main_validator(f):
             # "price",
         ]
         string_fields = ["exchange", "symbol", "action", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target", "password"]
-        numeric_fields = ["quantity", "leverage", "scalp_quantity"]
+        numeric_fields = ["quantity", "leverage"]
         dict_fields = ["headers", "options"]
         bool_fields = ["test", "duplicate"]
         enums = {

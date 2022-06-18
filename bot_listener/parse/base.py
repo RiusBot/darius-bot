@@ -37,6 +37,13 @@ class BaseParser(ABC):
                 logging.error("parse price error")
                 logging.exception("")
 
+            try:
+                quantity_list = self.parse_quantity(content, symbol)
+            except Exception:
+                quantity_list = [None for i in symbol]
+                logging.error("parse quantity error")
+                logging.exception("")
+
             return {
                 "channel": channel,
                 "content": content[:1024],
@@ -44,6 +51,7 @@ class BaseParser(ABC):
                 "recieve_timestamp": recieve_timestamp,
                 "symbol": symbol,
                 "action": action,
+                "quantity": quantity_list,
                 "entry": entry,
                 "stop_loss": stop_loss,
                 "take_profit": take_profit,
@@ -62,8 +70,12 @@ class BaseParser(ABC):
     def parse_action(self):
         raise NotImplementedError
 
+    def parse_quantity(self, message: str, symbol_list):
+        return [None for i in symbol_list]
+
     def parse_price(self, message: str):
+        # entry, stop_loss, take_profit, price
         return None, None, None, None
-      
+
     def parse_content(self, content: str):
         return content

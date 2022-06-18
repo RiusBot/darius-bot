@@ -1,12 +1,15 @@
+import os
 import json
 import parse
 import logging
 import requests
 import asyncio
 from config import config
+from datetime import datetime
 from telethon import TelegramClient, events
 from auth import fetch_secret_token_firestore
 from collections import Counter
+from json.decoder import JSONDecodeError
 
 
 telegram_client = TelegramClient('darius-bot-listener', config["telegram_api_id"], config["telegram_api_hash"])
@@ -66,12 +69,15 @@ async def send_to_execute(info: dict):
     headers = {"Authorization": f"Bearer {token}"}
     
     symbol_list = info["symbol"]
+    quantity_list = info["quantity"]
     symbol_list = [] if symbol_list is None else symbol_list
+    quantity_list = [] if quantity_list is None else quantity_list
     action = info["action"]
-    for symbol in symbol_list:
+    for symbol, quantity in zip(symbol_list, quantity_list):
         info["symbol"] = symbol.strip() if isinstance(symbol, str) else symbol
+        info["quantity"] = quantity
         logging.info(f"{symbol} {action} send to execute.")
-        
+
         for endpoint in config["backend_endpoint"]:
             logging.info(f"{endpoint}")
             response = requests.post(endpoint, json=info, headers=headers)
@@ -101,6 +107,8 @@ async def handler(event):
                     info = parse.CourageParser().parse(event)
                     logging.info(json.dumps(info, indent=4))
                     await send_to_execute(info)
+            except JSONDecodeError:
+                pass
             except Exception:
                 logging.exception("")
         elif "✈️ACDC策略快訊✈️" in event.chat.title:
@@ -167,14 +175,36 @@ async def vegas_handler(event):
 @telegram_client.on(events.NewMessage(from_users=cta_channel, forwards=False))
 async def cta_handler(event):
     # logging.info(f"Received message from {event.chat.title}\n{event.text}\n")
-    buy_info = parse.CtaParser("BUY").parse(event)
-    sell_info = parse.CtaParser("SELL").parse(event)
+
+    info = json.loads(event.text)
+    info = {symbol: float(amount) for symbol, amount in info.items()}
+    
+    if "BUSD" in list(info.keys())[0]:
+        state_file = "./cta_state/busd_state"
+    elif "USDT" in list(info.keys())[0]:
+        state_file = "./cta_state/usdt_state"
+    logging.info(f"state file {state_file}")
+
+    state = {}
+    if os.path.isfile(f"{state_file}.json"):
+        logging.info("load state")
+        with open(f"{state_file}.json", "r") as f:
+            state = json.load(f)
+            logging.info(f"{state}")
+
+    buy_info = parse.CtaParser("BUY", state).parse(event)
+    sell_info = parse.CtaParser("SELL", state).parse(event)
 
     logging.info(json.dumps(buy_info, indent=4))
     await send_to_execute(buy_info)
 
     logging.info(json.dumps(sell_info, indent=4))
     await send_to_execute(sell_info)
+
+    with open(f"{state_file}.json", "w") as f:
+        json.dump(info, f)
+    with open(f"{state_file}_{int(datetime.now().timestamp())}.json", "w") as f:
+        json.dump(info, f)
 
 
 @telegram_client.on(events.NewMessage(from_users=justin_channel, forwards=False))
