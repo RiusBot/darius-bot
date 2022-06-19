@@ -11,6 +11,7 @@ class BinanceClient(Base):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.quote = self.others.get('quote', 'USDT')
 
         self.options.update({
             "defaultType": self.target.lower(),
@@ -64,8 +65,8 @@ class BinanceClient(Base):
     def market_postprocess(self):
         if self.target.lower() == "future":
             tmp = {
-                'SHIB/USDT': self.markets.get("1000SHIB/USDT"),
-                'XEC/USDT': self.markets.get("1000XEC/USDT"),
+                f'SHIB/{self.quote}': self.markets.get(f"1000SHIB/{self.quote}"),
+                f'XEC/{self.quote}': self.markets.get(f"1000XEC/{self.quote}"),
             }
             self.markets.update(tmp)
             self.exchange.markets.update(tmp)
@@ -90,7 +91,7 @@ class BinanceClient(Base):
             return "BOTH"
     
     def make_symbol(self, symbol: str):
-        return f"{symbol}/USDT"
+        return f"{symbol}/{self.quote}"
     
     def get_volume(self, symbol: str) -> float:
         try:
@@ -109,12 +110,12 @@ class BinanceClient(Base):
         if self.target == "SPOT":
             assets = self.exchange.fetch_balance()["info"]["balances"]
             for asset in assets:
-                if asset["asset"] == "USDT":
+                if asset["asset"] == self.quote:
                     balance = asset["free"]
         elif self.target == "MARGIN":
             assets = self.exchange.fetch_balance()["info"]["userAssets"]
             for asset in assets:
-                if asset["asset"] == "USDT":
+                if asset["asset"] == self.quote:
                     balance = asset["free"]
         elif self.target == "FUTURE":
             balance = self.exchange.fetch_balance()["info"]['availableBalance']

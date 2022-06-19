@@ -61,6 +61,19 @@ def apply_enum_validators(data, enum_map: dict):
     return errors
 
 
+def apply_others_validators(data):
+    errors = list()
+    enums_map = {
+        'quote': {'USDT', 'USDC', 'BUSD', 'USD'}
+    }
+    for key, enum_value in enum_map.items():
+        if key in data:
+            value = data[key]
+            if data[key] not in enum_value:
+                errors.append(f"'{key}' must be in {enum_value} but got '{value}'")
+    return errors
+
+
 def main_validator(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -126,10 +139,11 @@ def clean_validator(f):
             "api_key",
             "api_secret",
             "type",
+            "others"
         ]
         string_fields = ["exchange", "type", "order_type", "stop_loss_type", "tale_profit_type", "api_key", "api_secret", "target"]
         numeric_fields = ["quantity", "leverage"]
-        dict_fields = []
+        dict_fields = ["others"]
         bool_fields = ["test", "duplicate"]
         enums = {
             "target": {"SPOT", "MARGIN", "FUTURE"},
@@ -142,6 +156,7 @@ def clean_validator(f):
 
         errors = apply_fields_validators(data, mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields)
         errors += apply_enum_validators(data, enums)
+        errors += apply_others_validators(data["others"])
 
         if errors:
             return jsonify({"error_message": errors}), 400

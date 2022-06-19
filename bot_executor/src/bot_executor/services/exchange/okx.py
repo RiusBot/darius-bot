@@ -4,12 +4,14 @@ import logging
 from typing import List, Dict, Tuple
 
 from .base import Base
+from bot_executor.services.exchange import okx_markets
 
 
 class OkxClient(Base):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.quote = self.others.get('quote', 'USDT')
 
         defaultType = {
             'SPOT': 'SPOT',
@@ -39,12 +41,21 @@ class OkxClient(Base):
             logging.error(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
             raise e
 
-        self.markets = self.exchange.loadMarkets(True)
+        self.load_markets()
         self.market_postprocess()
         self.scalp_quantity()
         self.account_config = self.exchange.private_get_account_config()['data'][0]
         self.set_tdmode()
 
+    def load_markets(self):
+        global okx_markets
+        if okx_markets:
+            self.markets = okx_markets
+            self.exchange.markets = okx_markets
+        else:
+            self.markets = self.exchange.loadMarkets(True)
+            okx_markets = self.markets
+    
     def market_postprocess(self):
         pass
 
@@ -69,9 +80,9 @@ class OkxClient(Base):
 
     def make_symbol(self, symbol: str):
         if self.target == "FUTURE":
-            symbol = f"{symbol}/USDT:USDT"
+            symbol = f"{symbol}/{self.quote}:{self.quote}"
         else:
-            symbol = f"{symbol}/USDT"
+            symbol = f"{symbol}/{self.quote}"
         return symbol
 
     def get_volume(self, symbol: str) -> float:
@@ -85,7 +96,7 @@ class OkxClient(Base):
         return float(self.exchange.fetchTicker(symbol)['info']["last"])
 
     def get_balance(self):
-        balance = self.exchange.fetch_balance()['USDT']['free']
+        balance = self.exchange.fetch_balance()[self.quote]['free']
         logging.debug(f"Balance remain: {balance}")
         return float(balance)
     

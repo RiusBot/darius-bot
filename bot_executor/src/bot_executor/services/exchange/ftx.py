@@ -12,6 +12,7 @@ class FtxClient(Base):
     def __init__(self, config: dict):
         super().__init__(config)
         self.externalReferralProgram = None
+        self.quote = self.others.get('quote', 'USD')
 
         self.options.update({
             "defaultType": self.target.lower(),
@@ -51,7 +52,7 @@ class FtxClient(Base):
     
     def make_symbol(self, symbol: str):
         if self.target != "FUTURE":
-            return f"{symbol}/USD"
+            return f"{symbol}/{self.quote}"
         else:
             return f"{symbol}-PERP"
     
@@ -73,7 +74,7 @@ class FtxClient(Base):
         balance = 0
         info = self.exchange.fetch_balance()["info"]
         for coin in info["result"]:
-            if coin['coin'] == "USD":
+            if coin['coin'] == self.quote:
                 balance = coin["availableWithoutBorrow"]
         return float(balance)
     

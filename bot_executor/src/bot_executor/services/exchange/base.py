@@ -6,6 +6,7 @@ from typing import List, Dict, Tuple
 class Base(ABC):
 
     def __init__(self, config):
+        self.exchange_name = config['exchange']
         self.config = config
         self.test_only = config["test"]
         self.target = config["target"]
@@ -21,6 +22,7 @@ class Base(ABC):
         self.subaccount = config.get("subaccount")
         self.options = config.get("options", {})
         self.headers = config.get("headers", {})
+        self.others = config.get("others", {})
 
     def scalp_quantity(self):
         if isinstance(self.config.get("scalp_quantity"), float):
