@@ -1,6 +1,7 @@
 import ccxt
 import json
 import logging
+from copy import deepcopy
 from typing import List, Dict, Tuple
 
 from .base import Base
@@ -32,6 +33,8 @@ class BinanceClient(Base):
             'options': self.options,
             'headers': self.headers
         })
+        if self.config.get("testnet", False) == True:
+            self.exchange.set_sandbox_mode(True)
 
         try:
             self.exchange.check_required_credentials()
@@ -53,14 +56,14 @@ class BinanceClient(Base):
                 self.exchange.markets = binance_future_markets
             else:
                 self.markets = self.exchange.loadMarkets(True)
-                binance_future_markets = self.markets
+                binance_future_markets = deepcopy(self.exchange.markets)
         else:
             if binance_spot_markets:
                 self.markets = binance_spot_markets
                 self.exchange.markets = binance_spot_markets
             else:
                 self.markets = self.exchange.loadMarkets(True)
-                binance_spot_markets = self.markets
+                binance_spot_markets = deepcopy(self.exchange.markets)
 
     def market_postprocess(self):
         if self.target.lower() == "future":
@@ -129,7 +132,7 @@ class BinanceClient(Base):
             amount = float(asset.get(token, 0))
             price = self.get_price(symbol)
             notional = amount * price
-            return {'notional', notional}
+            return {'notional': notional}
         elif self.target == "FUTURE":
             positions = self.exchange.fetchPositions()
             for position in positions:

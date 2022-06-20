@@ -19,6 +19,9 @@ class OkxClient(Base):
             'MARGIN': 'MARGIN'
         }.get(self.target.upper())
 
+        if self.config.get("testnet", False) == True:
+            self.headers.update({'x-simulated-trading': '1'})
+
         self.options.update({
             "defaultType": defaultType,
             "adjustForTimeDifference": True,

@@ -178,10 +178,10 @@ deploy-bot-executor: set-project
 			--region us-central1 \
 			--platform managed \
 			--cpu 1 \
-			--concurrency 2 \
+			--concurrency 1 \
 			--timeout 15s \
 			--memory 1Gi \
-			--max-instances 200 \
+			--max-instances 300 \
 			--update-env-vars='project_id=$(PROJECT_ID)'
 
 bot-optimizer: build-bot-optimizer deploy-bot-optimizer

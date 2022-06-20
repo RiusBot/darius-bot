@@ -69,5 +69,5 @@ def order_clean(order_info: dict):
     else:
         raise Exception(f"Clean order type {order_info['type']} not supported")
 
-    logging.info(f"Clean OCO Results: {exchange.exchange.id} {result['status']}")
+    logging.debug(f"Clean OCO Results: {exchange.exchange.id} {result['status']}")
     return result
