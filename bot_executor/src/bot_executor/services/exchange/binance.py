@@ -142,6 +142,16 @@ class BinanceClient(Base):
                     if position.get('side') is None:
                         position['side'] = {'SHORT': 'SELL', 'LONG': 'BUY'}.get(position['info']['positionSide'])
                     return position
+            
+    def close_all_orders(self):
+        if self.target == 'FUTURE':
+            # Cancel All Open Orders
+            pass
+        else:
+            # query all open order
+            # query all open oco order
+            # cancel them all one by noe
+            pass
 
     def get_margin(self, symbol: str) -> float:
         margin = None
@@ -163,9 +173,10 @@ class BinanceClient(Base):
         logging.debug(f"Margin level/ratio: {margin}")
         return margin
 
-    def create_market_buy(self, symbol: str):
+    def create_market_buy(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
@@ -179,9 +190,10 @@ class BinanceClient(Base):
         logging.info(f"Open average price : {order['average']}")
         return order
 
-    def create_limit_buy(self, symbol: str):
+    def create_limit_buy(self, symbol: str, amount: float = None):
         price = self.get_price(symbol) * 1.01
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
@@ -200,9 +212,10 @@ class BinanceClient(Base):
             order["amount"] = float(order.get("filled", 0))
         return order
 
-    def create_market_sell(self, symbol: str):
+    def create_market_sell(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
@@ -216,9 +229,10 @@ class BinanceClient(Base):
         logging.info(f"Sell average price : {order['average']}")
         return order
 
-    def create_limit_sell(self, symbol: str):
+    def create_limit_sell(self, symbol: str, amount: float = None):
         price = self.get_price(symbol) * 0.99
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:

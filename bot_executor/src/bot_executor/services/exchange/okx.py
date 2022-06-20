@@ -104,19 +104,8 @@ class OkxClient(Base):
         logging.debug(f"Balance remain: {balance}")
         return float(balance)
     
-    def get_position(self, symbol: str):
-        if self.target != "FUTURE":
-            token = symbol.split('/')[0]
-            asset = self.exchange.fetch_balance()["total"]
-            amount = float(asset.get(token, 0))
-            price = self.get_price(symbol)
-            notional = amount * price
-            return {'notional': notional}
-        elif self.target == "FUTURE":
-            positions = self.exchange.fetchPositions()
-            for position in positions:
-                if position.get('symbol') == symbol and position.get('side'):
-                    return position
+    def close_all_orders(self):
+        pass
 
     def get_margin(self, symbol: str) -> float:
         margin = self.exchange.fetch_balance()['info']['data'][0]['mgnRatio']

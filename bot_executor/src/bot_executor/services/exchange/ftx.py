@@ -78,15 +78,13 @@ class FtxClient(Base):
             if coin['coin'] == self.quote:
                 balance = coin["availableWithoutBorrow"]
         return float(balance)
-    
+
     def get_position(self, symbol: str):
         if self.target != "FUTURE":
-            token = symbol.split('/')[0]
-            asset = self.exchange.fetch_balance()["total"]
-            amount = float(asset.get(token, 0))
+            amount = self.positions.get(symbol, 0)
             price = self.get_price(symbol)
             notional = amount * price
-            return {'notional': notional}
+            return {'notional': notional, 'side': 'BUY' if amount > 0 else "SELL"}
         elif self.target == "FUTURE":
             positions = self.exchange.fetchPositions()
             for position in positions:
@@ -94,6 +92,9 @@ class FtxClient(Base):
                     info = position.get("info", {})
                     if info.get('future') == symbol and info.get('entryPrice') and info.get('side'):
                         return position
+
+    def close_all_orders(self):
+        pass
 
     def get_margin(self, symbol: str) -> float:
         margin = self.exchange.private_get_account()["result"]["marginFraction"]

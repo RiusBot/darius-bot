@@ -66,6 +66,11 @@ def order_clean(order_info: dict):
             order_info["symbol"]
         )
         result = {"status": status}
+    elif order_info["type"] == "position":
+        logging.debug(f"Start oco order clean for trade {order_info['trade_id']}")
+        exchange = get_exchange(order_info)
+        status = exchange.clean_all_position()
+        result = {"status": status}
     else:
         raise Exception(f"Clean order type {order_info['type']} not supported")
 

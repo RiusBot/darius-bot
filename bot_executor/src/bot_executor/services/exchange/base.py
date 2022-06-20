@@ -25,7 +25,7 @@ class Base(ABC):
         self.others = config.get("others", {})
         self.positions = {}
         if self.others is None:
-          self.others = {}
+            self.others = {}
 
     def scalp_quantity(self):
         if isinstance(self.config.get("scalp_quantity"), float):
@@ -150,8 +150,7 @@ class Base(ABC):
             self.close_position(symbol)
 
     @abstractmethod
-    def get_position(self, symbol: str) -> dict:
-        # return dict requires {"notional", "side"} for position duplicate check
+    def close_all_orders(self) -> dict:
         raise NotImplementedError
 
     @abstractmethod
