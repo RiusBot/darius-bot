@@ -66,7 +66,7 @@ def apply_others_validators(data):
     enums_map = {
         'quote': {'USDT', 'USDC', 'BUSD', 'USD'}
     }
-    for key, enum_value in enum_map.items():
+    for key, enum_value in enums_map.items():
         if key in data:
             value = data[key]
             if data[key] not in enum_value:
@@ -109,12 +109,14 @@ def main_validator(f):
             'action': {"SELL", "BUY"}
         }
         data = request.get_json()
+        data['others'] = {} if data['others'] is None else data['others']
         if data.get("headers") or data.get("options"):
             extra = {**data.get('headers', {}), **data.get('options', {})}
             logging.info(f"Extra: {extra}")
 
         errors = apply_fields_validators(data, mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields)
         errors += apply_enum_validators(data, enums)
+        errors += apply_others_validators(data["others"])
 
         if errors:
             return jsonify({"error_message": errors}), 400
@@ -150,9 +152,11 @@ def clean_validator(f):
             "order_type": {"LIMIT", "MARKET"},
             "stop_loss_type": {"LIMIT", "MARKET", "TRAILING"},
             "take_profit_type": {"LIMIT", "MARKET", "TRAILING"},
-            "exchange": {"binance", "ftx", "ftxus"}
+            "exchange": {"binance", "ftx", "ftxus"},
+            'type': {'oco', 'limit', 'position'}
         }
         data = request.get_json()
+        data['others'] = {} if data['others'] is None else data['others']
 
         errors = apply_fields_validators(data, mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields)
         errors += apply_enum_validators(data, enums)
