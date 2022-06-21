@@ -127,17 +127,20 @@ class BinanceClient(Base):
         return float(balance)
     
     def get_position(self, symbol: str):
+        # return dict requires {"notional", "side"} for position duplicate check
         if self.target == "SPOT" or self.target == "MARGIN":
-            token = symbol.split('/')[0]
-            asset = self.exchange.fetch_balance()["total"]
-            amount = float(asset.get(token, 0))
+            amount = self.get_all_positions().get(symbol, 0)
             price = self.get_price(symbol)
             notional = amount * price
-            return {'notional': notional}
+            return {
+                'notional': notional,
+                'side': 'BUY' if amount > 0 else "SELL"
+            }
         elif self.target == "FUTURE":
-            positions = self.exchange.fetchPositions()
-            for position in positions:
-                if position.get('symbol') == symbol and position.get('side'):
+            for position in self.get_all_positions():
+                if position.get('symbol') == symbol and position.get('entryPrice'):
+                    if position.get('side') is None:
+                        position['side'] = {'SHORT': 'SELL', 'LONG': 'BUY'}.get(position['info']['positionSide'])
                     return position
 
     def get_margin(self, symbol: str) -> float:

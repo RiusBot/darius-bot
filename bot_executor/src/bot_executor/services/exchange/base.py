@@ -23,7 +23,8 @@ class Base(ABC):
         self.options = config.get("options", {})
         self.headers = config.get("headers", {})
         self.others = config.get("others", {})
-        if self.others = None:
+        self.positions = {}
+        if self.others is None:
           self.others = {}
 
     def scalp_quantity(self):
@@ -97,7 +98,57 @@ class Base(ABC):
     @abstractmethod
     def get_balance(self) -> float:
         raise NotImplementedError
-        
+
+    def get_position(self, symbol: str):
+        # return dict requires {"notional", "side"} for position duplicate check
+        if self.target == "SPOT" or self.target == "MARGIN":
+            amount = self.get_all_positions().get(symbol, 0)
+            price = self.get_price(symbol)
+            notional = amount * price
+            return {
+                'notional': notional,
+                'side': 'BUY' if amount > 0 else "SELL"
+            }
+        elif self.target == "FUTURE":
+            for position in self.get_all_positions():
+                if position.get('symbol') == symbol and position.get('side'):
+                    return position
+
+    def get_all_positions(self) -> dict:
+        if self.positions == {}:
+            if self.target != "FUTURE":
+                asset = self.exchange.fetch_balance()["total"]
+                self.positions = {
+                    self.make_symbol(token): float(amount)
+                    for token, amount in asset.items()
+                }
+            elif self.target == "FUTURE":
+                positions = self.exchange.fetchPositions()
+                self.positions = {i['symbol']: i for i in positions if i['entryPrice']}
+        return self.positions
+
+    def close_position(self, symbol: str):
+        position = self.get_all_positions().get(symbol)
+        if not position:
+            raise Exception(f"position for {symbol} not found")
+
+        if self.target == "FUTURE":
+            amount = position.get('contracts', 0)
+        else:
+            amount = position
+
+        side = position['side'].upper()
+        if side in ("BUY", "LONG"):
+            self.create_market_sell(symbol, amount=amount)
+        elif side in ("SELL", "SHORT"):
+            self.create_market_buy(symbol, amount=amount)
+        else:
+            raise Exception(f"Unknown position side {side}")
+
+    def close_all_positions(self, symbol: str) -> dict:
+        for symbol in self.get_all_positions():
+            self.close_position(symbol)
+
     @abstractmethod
     def get_position(self, symbol: str) -> dict:
         # return dict requires {"notional", "side"} for position duplicate check
