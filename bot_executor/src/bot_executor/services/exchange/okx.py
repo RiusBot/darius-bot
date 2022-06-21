@@ -1,6 +1,7 @@
 import ccxt
 import json
 import logging
+from copy import deepcopy
 from typing import List, Dict, Tuple
 
 from .base import Base
@@ -57,7 +58,7 @@ class OkxClient(Base):
             self.exchange.markets = okx_markets
         else:
             self.markets = self.exchange.loadMarkets(True)
-            okx_markets = self.markets
+            okx_markets = deepcopy(self.exchange.markets)
     
     def market_postprocess(self):
         pass
@@ -99,7 +100,7 @@ class OkxClient(Base):
         return float(self.exchange.fetchTicker(symbol)['info']["last"])
 
     def get_balance(self):
-        balance = self.exchange.fetch_balance()[self.quote]['free']
+        balance = self.exchange.fetch_balance().get(self.quote, {}).get('free', 0)
         logging.debug(f"Balance remain: {balance}")
         return float(balance)
     

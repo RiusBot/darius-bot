@@ -42,7 +42,8 @@ class BinanceClient(Base):
             logging.error(f"Authenticate Requirements: {self.exchange.requiredCredentials}")
             raise e
 
-        self.load_markets()
+        # self.load_markets()
+        self.markets = self.exchange.loadMarkets(True)
         self.market_postprocess()
         self.scalp_quantity()
 

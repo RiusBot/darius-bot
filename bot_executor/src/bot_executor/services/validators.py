@@ -62,6 +62,8 @@ def apply_enum_validators(data, enum_map: dict):
 
 
 def apply_others_validators(data):
+    if data is None:
+        return []
     errors = list()
     enums_map = {
         'quote': {'USDT', 'USDC', 'BUSD', 'USD'}

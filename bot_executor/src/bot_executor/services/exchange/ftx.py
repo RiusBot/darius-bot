@@ -1,6 +1,7 @@
 import ccxt
 import json
 import logging
+from copy import deepcopy
 from typing import List, Dict, Tuple
 
 from .base import Base
@@ -48,7 +49,7 @@ class FtxClient(Base):
             self.exchange.markets = ftx_markets
         else:
             self.markets = self.exchange.loadMarkets(True)
-            ftx_markets = self.markets
+            ftx_markets = deepcopy(self.exchange.markets)
     
     def make_symbol(self, symbol: str):
         if self.target != "FUTURE":
