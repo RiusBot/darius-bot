@@ -23,6 +23,8 @@ class Base(ABC):
         self.options = config.get("options", {})
         self.headers = config.get("headers", {})
         self.others = config.get("others", {})
+        if self.others = None:
+          self.others = {}
 
     def scalp_quantity(self):
         if isinstance(self.config.get("scalp_quantity"), float):
