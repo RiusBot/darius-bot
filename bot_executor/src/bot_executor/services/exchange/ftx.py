@@ -40,7 +40,6 @@ class FtxClient(Base):
         self.load_markets()
         self.markets = {value.get('id', key): value for key, value in self.markets.items()}
         self.exchange.markets = self.markets
-        self.scalp_quantity()
 
     def load_markets(self):
         global ftx_markets
@@ -79,19 +78,49 @@ class FtxClient(Base):
                 balance = coin["availableWithoutBorrow"]
         return float(balance)
 
-    def get_position(self, symbol: str):
+    def get_position(self, symbol: str, action: str):
         if self.target != "FUTURE":
-            amount = self.positions.get(symbol, 0)
-            price = self.get_price(symbol)
-            notional = amount * price
-            return {'notional': notional, 'side': 'BUY' if amount > 0 else "SELL"}
+            token = symbol.split('/')[0]
+            asset = self.exchange.fetch_balance()["total"]
+            amount = float(asset.get(token, 0))
+            if amount > 0:
+                price = self.get_price(symbol)
+                notional = amount * price
+                side = 'BUY' if amount > 0 else "SELL"
+                if side == action:
+                    return {
+                        'symbol': symbol,
+                        'amount': amount,
+                        'notional': notional,
+                        'side': side,
+                        'info': {'side': side.lower()}
+                    }
         elif self.target == "FUTURE":
             positions = self.exchange.fetchPositions()
             for position in positions:
                 if "symbol" in position:
                     info = position.get("info", {})
-                    if info.get('future') == symbol and info.get('entryPrice') and info.get('side'):
+                    if info.get('future') == symbol and info.get('entryPrice') and info.get('side') == action.lower():
                         return position
+
+    def close_position(self, symbol: str, action: str, amount: float = None):
+        position = self.get_position(symbol, action)
+        if position is None:
+            return
+
+        if amount is None:
+            if self.target == "FUTURE":
+                amount = position.get('contracts', 0)
+            else:
+                amount = position.get('amount', 0)
+
+        side = position['info']['side']
+        if side == 'buy':
+            self.create_market_sell(symbol, amount)
+        elif side == 'sell':
+            self.create_market_buy(symbol, amount)
+        else:
+            raise Exception(f"Unknown side {side}")
 
     def close_all_orders(self):
         pass
@@ -100,9 +129,10 @@ class FtxClient(Base):
         margin = self.exchange.private_get_account()["result"]["marginFraction"]
         return 999 if margin is None else float(margin)
 
-    def create_market_buy(self, symbol: str):
+    def create_market_buy(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
@@ -141,9 +171,10 @@ class FtxClient(Base):
             order["amount"] = float(order.get("filled", 0))
         return order
 
-    def create_market_sell(self, symbol: str):
+    def create_market_sell(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:

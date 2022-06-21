@@ -45,7 +45,6 @@ class BinanceClient(Base):
         # self.load_markets()
         self.markets = self.exchange.loadMarkets(True)
         self.market_postprocess()
-        self.scalp_quantity()
 
     def load_markets(self):
 
@@ -115,33 +114,58 @@ class BinanceClient(Base):
             assets = self.exchange.fetch_balance()["info"]["balances"]
             for asset in assets:
                 if asset["asset"] == self.quote:
-                    balance = asset["free"]
+                    balance = asset["total"]
         elif self.target == "MARGIN":
             assets = self.exchange.fetch_balance()["info"]["userAssets"]
             for asset in assets:
                 if asset["asset"] == self.quote:
-                    balance = asset["free"]
+                    balance = asset["total"]
         elif self.target == "FUTURE":
-            balance = self.exchange.fetch_balance()["info"]['availableBalance']
+            balance = self.exchange.fetch_balance()["info"]['totalWalletBalance']
         logging.debug(f"Balance remain: {balance}")
         return float(balance)
-    
-    def get_position(self, symbol: str):
-        # return dict requires {"notional", "side"} for position duplicate check
-        if self.target == "SPOT" or self.target == "MARGIN":
-            amount = self.get_all_positions().get(symbol, 0)
-            price = self.get_price(symbol)
-            notional = amount * price
-            return {
-                'notional': notional,
-                'side': 'BUY' if amount > 0 else "SELL"
-            }
-        elif self.target == "FUTURE":
-            for position in self.get_all_positions():
-                if position.get('symbol') == symbol and position.get('entryPrice'):
-                    if position.get('side') is None:
-                        position['side'] = {'SHORT': 'SELL', 'LONG': 'BUY'}.get(position['info']['positionSide'])
-                    return position
+
+    def close_position(self, symbol: str, action: str, amount: float = None):
+        position = self.get_position(symbol, action)
+        if position is None:
+            return
+
+        if amount is None:
+            if self.target == "FUTURE":
+                amount = position.get('contracts', 0)
+            else:
+                amount = position.get('amount', 0)
+
+        positionSide = position['info']['positionSide']
+        side = position['side']
+        if side is None:
+            side = positionSide
+        side = side.upper()
+
+        if side in ("BUY", "LONG"):
+            self.close_long_position(symbol, amount, positionSide)
+        elif side in ("SELL", "SHORT"):
+            self.close_short_position(symbol, amount, positionSide)
+        else:
+            raise Exception(f"Unknown position side {side}")
+            
+    def close_long_position(self, symbol: str, amount: float, positionSide: str):
+        logging.info(f"Close long position. symbol: {symbol}, amount: {amount}, pos: {positionSide}")
+        self.exchange.create_market_order(
+            symbol=symbol,
+            amount=amount,
+            side='SELL',
+            params={'positionSide': positionSide}
+        )
+
+    def close_short_position(self, symbol: str, amount: float, positionSide: str):
+        logging.info(f"Close short position. symbol: {symbol}, amount: {amount}, pos: {positionSide}")
+        self.exchange.create_market_order(
+            symbol=symbol,
+            amount=amount,
+            side='BUY',
+            params={'positionSide': positionSide}
+        )
             
     def close_all_orders(self):
         if self.target == 'FUTURE':
@@ -172,11 +196,10 @@ class BinanceClient(Base):
 
         logging.debug(f"Margin level/ratio: {margin}")
         return margin
-
-    def create_market_buy(self, symbol: str, amount: float = None):
+    
+    def create_market_buy(self, symbol: str):
         price = self.get_price(symbol)
-        if amount is None:
-            amount = self.quantity / price * self.leverage
+        amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
@@ -190,10 +213,9 @@ class BinanceClient(Base):
         logging.info(f"Open average price : {order['average']}")
         return order
 
-    def create_limit_buy(self, symbol: str, amount: float = None):
+    def create_limit_buy(self, symbol: str):
         price = self.get_price(symbol) * 1.01
-        if amount is None:
-            amount = self.quantity / price * self.leverage
+        amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
@@ -212,10 +234,9 @@ class BinanceClient(Base):
             order["amount"] = float(order.get("filled", 0))
         return order
 
-    def create_market_sell(self, symbol: str, amount: float = None):
+    def create_market_sell(self, symbol: str):
         price = self.get_price(symbol)
-        if amount is None:
-            amount = self.quantity / price * self.leverage
+        amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
@@ -229,10 +250,9 @@ class BinanceClient(Base):
         logging.info(f"Sell average price : {order['average']}")
         return order
 
-    def create_limit_sell(self, symbol: str, amount: float = None):
+    def create_limit_sell(self, symbol: str):
         price = self.get_price(symbol) * 0.99
-        if amount is None:
-            amount = self.quantity / price * self.leverage
+        amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:

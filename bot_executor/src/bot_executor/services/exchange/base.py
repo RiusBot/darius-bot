@@ -29,6 +29,11 @@ class Base(ABC):
 
     def scalp_quantity(self):
         if isinstance(self.config.get("scalp_quantity"), float):
+
+            symbol = self.make_symbol(self.config["symbol"])
+            self.close_position(symbol, "SELL")
+            self.close_position(symbol, "BUY")
+
             remain_balance = self.get_balance()
             scalp_quantity = abs(self.config["scalp_quantity"])
             self.quantity = scalp_quantity * remain_balance
@@ -99,23 +104,33 @@ class Base(ABC):
     def get_balance(self) -> float:
         raise NotImplementedError
 
-    def get_position(self, symbol: str):
+    def get_position(self, symbol: str, action: str):
         # return dict requires {"notional", "side"} for position duplicate check
         if self.target == "SPOT" or self.target == "MARGIN":
-            amount = self.get_all_positions().get(symbol, 0)
-            price = self.get_price(symbol)
-            notional = amount * price
-            return {
-                'notional': notional,
-                'side': 'BUY' if amount > 0 else "SELL"
-            }
+            positions = self.get_all_positions()
+            if symbol in positions:
+                amount = positions[symbol]
+                price = self.get_price(symbol)
+                notional = amount * price
+                side = 'BUY' if amount > 0 else "SELL"
+                if side == action:
+                    return {
+                        'symbol': symbol,
+                        'amount': amount,
+                        'notional': notional,
+                        'side': side
+                    }
         elif self.target == "FUTURE":
+            side = {
+                "BUY": {"BUY", "LONG"},
+                "SELL": {"SELL", "SHORT"},
+            }
             for position in self.get_all_positions():
-                if position.get('symbol') == symbol and position.get('side'):
+                if position.get('symbol') == symbol and position.get('side').upper() in side[action]:
                     return position
 
-    def get_all_positions(self) -> dict:
-        if self.positions == {}:
+    def get_all_positions(self, reload=False) -> dict:
+        if self.positions == {} or reload:
             if self.target != "FUTURE":
                 asset = self.exchange.fetch_balance()["total"]
                 self.positions = {
@@ -123,31 +138,8 @@ class Base(ABC):
                     for token, amount in asset.items()
                 }
             elif self.target == "FUTURE":
-                positions = self.exchange.fetchPositions()
-                self.positions = {i['symbol']: i for i in positions if i['entryPrice']}
+                self.positions = [i for i in self.exchange.fetchPositions() if i['side']]
         return self.positions
-
-    def close_position(self, symbol: str):
-        position = self.get_all_positions().get(symbol)
-        if not position:
-            raise Exception(f"position for {symbol} not found")
-
-        if self.target == "FUTURE":
-            amount = position.get('contracts', 0)
-        else:
-            amount = position
-
-        side = position['side'].upper()
-        if side in ("BUY", "LONG"):
-            self.create_market_sell(symbol, amount=amount)
-        elif side in ("SELL", "SHORT"):
-            self.create_market_buy(symbol, amount=amount)
-        else:
-            raise Exception(f"Unknown position side {side}")
-
-    def close_all_positions(self, symbol: str) -> dict:
-        for symbol in self.get_all_positions():
-            self.close_position(symbol)
 
     @abstractmethod
     def close_all_orders(self) -> dict:
@@ -187,24 +179,14 @@ class Base(ABC):
 
     def validate_duplicate(self, symbol: str, action: str):
         logging.info(f"check {symbol} {action} {self.target} position if duplicate")
-        position = self.get_position(symbol)
+        position = self.get_position(symbol, action)
         if position:
             notional = position.get('notional', 0)
 
             if self.target == "FUTURE":
-                side = position.get('side')
-                logging.info(f"{symbol} has exists {side} position.")
-                side_map = {
-                    "BUY": ("BUY", "LONG"),
-                    "SELL": ("SHORT", "SELL")
-                }
-                if side.upper() not in side_map[action]:
-                    return  # opposite side then dont count as duplicate
-
                 if notional > (self.quantity / 20):  # if position too small then dont count as duplicate
                     logging.info(f"{symbol} has {notional} notional.")
                     return "Position duplicate"
-
             else:
                 if action == "BUY" and notional > (self.quantity / 20):
                     logging.info(f"{symbol} has {notional} notional.")
@@ -227,6 +209,10 @@ class Base(ABC):
         if err_msg and isinstance(err_msg, str):
             logging.error(err_msg)
             return err_msg
+        
+        self.scalp_quantity()
+        if self.config.get("scalp_quantity") == 0:
+            return {}
 
         open_order = None
         if action == "BUY":

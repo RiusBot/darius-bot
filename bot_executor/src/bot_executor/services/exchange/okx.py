@@ -47,7 +47,6 @@ class OkxClient(Base):
 
         self.load_markets()
         self.market_postprocess()
-        self.scalp_quantity()
         self.account_config = self.exchange.private_get_account_config()['data'][0]
         self.set_tdmode()
 
@@ -100,10 +99,39 @@ class OkxClient(Base):
         return float(self.exchange.fetchTicker(symbol)['info']["last"])
 
     def get_balance(self):
-        balance = self.exchange.fetch_balance().get(self.quote, {}).get('free', 0)
+        balance = self.exchange.fetch_balance().get(self.quote, {}).get('total', 0)
         logging.debug(f"Balance remain: {balance}")
         return float(balance)
     
+    def close_position(self, symbol: str, action: str, amount: float = None):
+        position = self.get_position(symbol, action)
+        if position is None:
+            return
+        
+        if amount is None:
+            if self.target == "FUTURE":
+                amount = position.get('contracts', 0) * position.get('contractSize', 0)
+            else:
+                amount = abs(position.get('amount', 0))
+
+        if self.target == "FUTURE":
+            positionSide = position['info']['posSide']
+            instId = position['info']['instId']
+            mgnMode = position['info']['mgnMode']
+
+            logging.info(f"Close future position. symbol: {symbol}, amount: {amount}, pos: {positionSide}")
+            self.exchange.private_post_trade_close_position(params={
+                'instId': instId,
+                'mgnMode': mgnMode,
+                'posSide': positionSide,
+            })
+        else:
+            logging.info(f"Close spot position. symbol: {symbol}, amount: {amount}")
+            if position['side'] == 'BUY':
+                self.create_market_sell(symbol, amount)
+            elif position['side'] == 'SELL':
+                self.create_market_buy(symbol, amount)
+
     def close_all_orders(self):
         pass
 
@@ -120,9 +148,10 @@ class OkxClient(Base):
         else:
             return amount
 
-    def create_market_buy(self, symbol: str):
+    def create_market_buy(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.get_amount(symbol, self.quantity / price * self.leverage)
+        if amount is None:
+            amount = self.get_amount(symbol, self.quantity / price * self.leverage)
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
@@ -166,9 +195,10 @@ class OkxClient(Base):
             order["amount"] = float(order.get("filled", 0))
         return order
 
-    def create_market_sell(self, symbol: str):
+    def create_market_sell(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.get_amount(symbol, self.quantity / price * self.leverage)
+        if amount is None:
+            amount = self.get_amount(symbol, self.quantity / price * self.leverage)
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0:
