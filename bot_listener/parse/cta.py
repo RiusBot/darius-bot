@@ -43,7 +43,8 @@ class CtaParser(BaseParser):
 
         all_symbol = (set(info.keys()) | set(self.state.keys()))
         for symbol in all_symbol:
-            amount = float(info.get(symbol, 0)) - float(self.state.get(symbol, 0))
+            # amount = float(info.get(symbol, 0)) - float(self.state.get(symbol, 0))
+            amount = info.get(symbol, 0)
             amount = round(amount, 4)
             if self.action == "BUY" and amount > 0:
                 amount_list.append(amount)

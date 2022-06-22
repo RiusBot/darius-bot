@@ -105,7 +105,7 @@ class Base(ABC):
         raise NotImplementedError
 
     def get_position(self, symbol: str, action: str):
-        # return dict requires {"notional", "side"} for position duplicate check
+        # return dict requires {"notional", "side", "symbol", "amount"} for position duplicate check
         if self.target == "SPOT" or self.target == "MARGIN":
             positions = self.get_all_positions()
             if symbol in positions:
@@ -118,7 +118,7 @@ class Base(ABC):
                         'symbol': symbol,
                         'amount': amount,
                         'notional': notional,
-                        'side': side
+                        'side': side,
                     }
         elif self.target == "FUTURE":
             side = {
@@ -132,7 +132,7 @@ class Base(ABC):
     def get_all_positions(self, reload=False) -> dict:
         if self.positions == {} or reload:
             if self.target != "FUTURE":
-                asset = self.exchange.fetch_balance()["total"]
+                asset = self.exchange.fetch_balance()["free"]
                 self.positions = {
                     self.make_symbol(token): float(amount)
                     for token, amount in asset.items()

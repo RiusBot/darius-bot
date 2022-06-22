@@ -154,7 +154,7 @@ class OkxClient(Base):
             amount = self.get_amount(symbol, self.quantity / price * self.leverage)
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Market Buy {symbol}
@@ -175,7 +175,7 @@ class OkxClient(Base):
         amount = self.get_amount(symbol, self.quantity / price * self.leverage)
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Limit Buy {symbol}
@@ -201,7 +201,7 @@ class OkxClient(Base):
             amount = self.get_amount(symbol, self.quantity / price * self.leverage)
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Market Sell {symbol}
@@ -223,7 +223,7 @@ class OkxClient(Base):
         amount = self.get_amount(symbol, self.quantity / price * self.leverage)
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Limit Sell {symbol}

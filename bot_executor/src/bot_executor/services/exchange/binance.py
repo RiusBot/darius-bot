@@ -114,40 +114,52 @@ class BinanceClient(Base):
             assets = self.exchange.fetch_balance()["info"]["balances"]
             for asset in assets:
                 if asset["asset"] == self.quote:
-                    balance = asset["total"]
+                    balance = asset["free"]
         elif self.target == "MARGIN":
             assets = self.exchange.fetch_balance()["info"]["userAssets"]
             for asset in assets:
                 if asset["asset"] == self.quote:
-                    balance = asset["total"]
+                    balance = asset["free"]
         elif self.target == "FUTURE":
-            balance = self.exchange.fetch_balance()["info"]['totalWalletBalance']
+            balance = self.exchange.fetch_balance().get(self.quote, {}).get('total', 0)
         logging.debug(f"Balance remain: {balance}")
         return float(balance)
 
     def close_position(self, symbol: str, action: str, amount: float = None):
         position = self.get_position(symbol, action)
         if position is None:
+            logging.info(f"Position {symbol} {action} not exists")
             return
+        logging.info(f"close Position {symbol} {action}")
 
         if amount is None:
             if self.target == "FUTURE":
                 amount = position.get('contracts', 0)
             else:
                 amount = position.get('amount', 0)
+        
+        if self.target == "FUTURE":
+            
+            positionSide = position['info']['positionSide']
+            side = position['side']
+            if side is None:
+                side = positionSide
+            side = side.upper()
 
-        positionSide = position['info']['positionSide']
-        side = position['side']
-        if side is None:
-            side = positionSide
-        side = side.upper()
-
-        if side in ("BUY", "LONG"):
-            self.close_long_position(symbol, amount, positionSide)
-        elif side in ("SELL", "SHORT"):
-            self.close_short_position(symbol, amount, positionSide)
+            if side in ("BUY", "LONG"):
+                self.close_long_position(symbol, amount, positionSide)
+            elif side in ("SELL", "SHORT"):
+                self.close_short_position(symbol, amount, positionSide)
+            else:
+                raise Exception(f"Unknown position side {side}")
+            
         else:
-            raise Exception(f"Unknown position side {side}")
+            side = position['side'].upper()
+            if side == "BUY":
+                self.create_market_sell(symbol, amount)
+            elif side == "SELL":
+                self.create_market_buy(symbol, amount)
+            
             
     def close_long_position(self, symbol: str, amount: float, positionSide: str):
         logging.info(f"Close long position. symbol: {symbol}, amount: {amount}, pos: {positionSide}")
@@ -197,12 +209,13 @@ class BinanceClient(Base):
         logging.debug(f"Margin level/ratio: {margin}")
         return margin
     
-    def create_market_buy(self, symbol: str):
+    def create_market_buy(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Market Buy {symbol}
@@ -218,7 +231,7 @@ class BinanceClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Limit Buy {symbol}
@@ -234,12 +247,13 @@ class BinanceClient(Base):
             order["amount"] = float(order.get("filled", 0))
         return order
 
-    def create_market_sell(self, symbol: str):
+    def create_market_sell(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Market Sell {symbol}
@@ -255,7 +269,7 @@ class BinanceClient(Base):
         amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Limit Sell {symbol}
