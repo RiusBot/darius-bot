@@ -121,7 +121,7 @@ class BinanceClient(Base):
                 if asset["asset"] == self.quote:
                     balance = asset["free"]
         elif self.target == "FUTURE":
-            balance = self.exchange.fetch_balance().get(self.quote, {}).get('total', 0)
+            balance = self.exchange.fetch_balance().get(self.quote, {}).get('free', 0)
         logging.debug(f"Balance remain: {balance}")
         return float(balance)
 

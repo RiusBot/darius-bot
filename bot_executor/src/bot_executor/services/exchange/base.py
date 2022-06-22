@@ -209,7 +209,7 @@ class Base(ABC):
         if err_msg and isinstance(err_msg, str):
             logging.error(err_msg)
             return err_msg
-        
+
         self.scalp_quantity()
         if self.config.get("scalp_quantity") == 0:
             return {}

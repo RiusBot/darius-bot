@@ -42,7 +42,7 @@ def main():
     except ccxt.BaseError as e:
         order_info.pop('token', None)
         logging.error(f"Order info: {order_info}")
-        logging.exception("")
+        logging.error(repr(e))
         # traceback.format_exc()
         return jsonify({"error_message": repr(e)}), 500
     except Exception as e:
@@ -62,7 +62,7 @@ def clean():
     except ccxt.BaseError as e:
         order_info.pop('token', None)
         logging.error(f"Order info: {order_info}")
-        logging.exception("")
+        logging.error(repr(e))
         # traceback.format_exc()
         return jsonify({"error_message": repr(e)}), 500
     except Exception as e:
