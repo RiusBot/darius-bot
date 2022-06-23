@@ -27,17 +27,34 @@ class Base(ABC):
         if self.others is None:
             self.others = {}
 
-    def scalp_quantity(self):
+    def scalp_quantity(self, action: str):
         if isinstance(self.config.get("scalp_quantity"), float):
 
             symbol = self.make_symbol(self.config["symbol"])
-            self.close_position(symbol, "SELL")
-            self.close_position(symbol, "BUY")
-
-            remain_balance = self.get_balance()
             scalp_quantity = abs(self.config["scalp_quantity"])
-            self.quantity = scalp_quantity * remain_balance
-            logging.info(f"Balance: {remain_balance}, scalp quantity: {scalp_quantity}, quantity: {self.quantity}")
+
+            if scalp_quantity == 0:
+                self.close_position(symbol, "SELL")
+                self.close_position(symbol, "BUY")
+            if action == "BUY":
+                self.close_position(symbol, "SELL")
+            elif action == "SELL":
+                self.close_position(symbol, "BUY")
+
+            total_balance = self.get_balance()
+            position = self.get_position(symbol, action)
+            position_notional = position.get('notional', 0)
+            required_notional = scalp_quantity * total_balance
+
+            if abs(required_notional - position_notional) <= 20:
+                self.quantity = 0
+            elif required_notional > position_notional + 20:
+                self.quantity = required_notional - position_notional
+            else:
+                self.close_position(symbol, action)
+                self.quantity = required_notional
+
+            logging.info(f"Balance: {total_balance}, scalp quantity: {scalp_quantity}, quantity: {self.quantity}, position: {position_notional}, required: {required_notional}")
 
     def clean_limit_order(self, open_order: str, symbol: str):
         result = None
@@ -127,6 +144,7 @@ class Base(ABC):
             }
             for position in self.get_all_positions():
                 if position.get('symbol') == symbol and position.get('side').upper() in side[action]:
+                    # position['side'] = action
                     return position
 
     def get_all_positions(self, reload=False) -> dict:
@@ -210,21 +228,24 @@ class Base(ABC):
             logging.error(err_msg)
             return err_msg
 
-        self.scalp_quantity()
-        if self.config.get("scalp_quantity") == 0:
+        self.scalp_quantity(action)
+        if self.config.get("scalp_quantity") == 0 or self.quantity == 0:
             return {}
 
         open_order = None
+        entry = self.config.get("scalp_entry")
+        amount = self.config.get('amount')
+
         if action == "BUY":
             if self.order_type == "LIMIT":
-                open_order = self.create_limit_buy(symbol)
+                open_order = self.create_limit_buy(symbol, amount, entry)
             elif self.order_type == "MARKET":
-                open_order = self.create_market_buy(symbol)
+                open_order = self.create_market_buy(symbol, amount)
         elif action == "SELL":
             if self.order_type == "LIMIT":
-                open_order = self.create_limit_sell(symbol)
+                open_order = self.create_limit_sell(symbol, amount, entry)
             elif self.order_type == "MARKET":
-                open_order = self.create_market_sell(symbol)
+                open_order = self.create_market_sell(symbol, amount)
         return open_order
 
     def make_oco_order(self, open_order: dict, order_info: dict) -> Tuple[dict, dict]:

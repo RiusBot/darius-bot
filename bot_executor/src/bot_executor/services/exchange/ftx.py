@@ -75,7 +75,7 @@ class FtxClient(Base):
         info = self.exchange.fetch_balance()["info"]
         for coin in info["result"]:
             if coin['coin'] == self.quote:
-                balance = coin["availableWithoutBorrow"]
+                balance = coin["total"]
         return float(balance)
 
     def get_position(self, symbol: str, action: str):
@@ -148,9 +148,11 @@ class FtxClient(Base):
         logging.info(f"Open average price : {order['average']}")
         return order
 
-    def create_limit_buy(self, symbol: str):
-        price = self.get_price(symbol) * 1.01
-        amount = self.quantity / price * self.leverage
+    def create_limit_buy(self, symbol: str, amount: float = None, price: float = None):
+        if price is None:
+            price = self.get_price(symbol) * 1.01
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0 or (self.quantity * self.leverage < 10):
@@ -190,9 +192,11 @@ class FtxClient(Base):
         logging.info(f"Sell average price : {order['average']}")
         return order
 
-    def create_limit_sell(self, symbol: str):
-        price = self.get_price(symbol) * 0.99
-        amount = self.quantity / price * self.leverage
+    def create_limit_sell(self, symbol: str, amount: float = None, price: float = None):
+        if price is None:
+            price = self.get_price(symbol) * 0.99
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0 or (self.quantity * self.leverage < 10):

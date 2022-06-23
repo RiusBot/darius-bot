@@ -99,7 +99,11 @@ class OkxClient(Base):
         return float(self.exchange.fetchTicker(symbol)['info']["last"])
 
     def get_balance(self):
-        balance = self.exchange.fetch_balance().get(self.quote, {}).get('total', 0)
+        balance = self.exchange.fetch_balance()
+        if balance["info"]["data"][0]['adjEq']:
+            balance = float(balance["info"]["data"][0]['adjEq'])
+        else:
+            balance = balance.get(self.quote, {}).get('total', 0)
         logging.debug(f"Balance remain: {balance}")
         return float(balance)
     
@@ -170,9 +174,11 @@ class OkxClient(Base):
         order = self.exchange.fetchOrder(symbol=symbol, id=order['id'])
         return order
 
-    def create_limit_buy(self, symbol: str):
-        price = self.get_price(symbol) * 1.01
-        amount = self.get_amount(symbol, self.quantity / price * self.leverage)
+    def create_limit_buy(self, symbol: str, amount: float = None, price: float = None):
+        if price is None:
+            price = self.get_price(symbol) * 1.01
+        if amount is None:
+            amount = self.get_amount(symbol, self.quantity / price * self.leverage)
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0 or (self.quantity * self.leverage < 10):
@@ -218,9 +224,11 @@ class OkxClient(Base):
         print(order)
         return order
 
-    def create_limit_sell(self, symbol: str):
-        price = self.get_price(symbol) * 0.99
-        amount = self.get_amount(symbol, self.quantity / price * self.leverage)
+    def create_limit_sell(self, symbol: str, amount: float = None, price: float = None):
+        if price is None:
+            price = self.get_price(symbol) * 0.99
+        if amount is None:
+            amount = self.get_amount(symbol, self.quantity / price * self.leverage)
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         if amount <= 0 or (self.quantity * self.leverage < 10):
