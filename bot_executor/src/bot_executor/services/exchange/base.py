@@ -36,14 +36,14 @@ class Base(ABC):
             if scalp_quantity == 0:
                 self.close_position(symbol, "SELL")
                 self.close_position(symbol, "BUY")
-            if action == "BUY":
+            elif action == "BUY":
                 self.close_position(symbol, "SELL")
             elif action == "SELL":
                 self.close_position(symbol, "BUY")
 
             total_balance = self.get_balance()
             position = self.get_position(symbol, action)
-            position_notional = position.get('notional', 0)
+            position_notional = position.get('notional', 0) if position else 0
             required_notional = scalp_quantity * total_balance
 
             if abs(required_notional - position_notional) <= 20:
