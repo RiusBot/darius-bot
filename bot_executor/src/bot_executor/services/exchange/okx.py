@@ -254,6 +254,10 @@ class OkxClient(Base):
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+        
+        skip_tp = True if (take_profit == 0 and tp_price is None) else False
+        skip_sl = True if (stop_loss == 0 and sl_price is None) else False
+        
         amount = float(open_order["amount"])
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         price = float(open_order.get("average", open_order.get("price", self.get_price(symbol))))
@@ -288,12 +292,18 @@ class OkxClient(Base):
             'sz': amount,
         }
         sl_params, tp_params = self.create_oco_params(params, sl_price, tp_price, price, take_profit, stop_loss)
-        sl_order = self.exchange.private_post_trade_order_algo(params=sl_params)
+        if not skip_sl:
+            sl_order = self.exchange.private_post_trade_order_algo(params=sl_params)
         if self.take_profit_type != "TRAILING":
-            tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
+            if not skip_tp:
+                tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
         return tp_order, sl_order
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+
+        skip_tp = True if (take_profit == 0 and tp_price is None) else False
+        skip_sl = True if (stop_loss == 0 and sl_price is None) else False
+
         amount = float(open_order["amount"])
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         price = float(open_order.get("average", open_order.get("price", self.get_price(symbol))))
@@ -327,9 +337,11 @@ class OkxClient(Base):
             'sz': amount,
         }
         sl_params, tp_params = self.create_oco_params(params, sl_price, tp_price, price, take_profit, stop_loss)
-        sl_order = self.exchange.private_post_trade_order_algo(params=sl_params)
+        if not skip_sl:
+            sl_order = self.exchange.private_post_trade_order_algo(params=sl_params)
         if self.take_profit_type != "TRAILING":
-            tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
+            if not skip_tp:
+                tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
         return tp_order, sl_order
 
     def create_oco_params(self, params: dict, sl_price: float, tp_price: float, price: float, take_profit: float, stop_loss: float):

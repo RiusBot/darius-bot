@@ -220,6 +220,10 @@ class FtxClient(Base):
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+        
+        skip_tp = True if (take_profit == 0 and tp_price is None) else False
+        skip_sl = True if (stop_loss == 0 and sl_price is None) else False
+
         price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
@@ -266,9 +270,11 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = price * (1 - take_profit) - price
-        tp_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+            
+        if not skip_tp:
+            tp_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
 
         params = {
             "market": symbol,
@@ -285,13 +291,19 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = price * (1 + stop_loss) - price
-        sl_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        
+        if not skip_sl:
+            sl_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
 
         return tp_order.get("result"), sl_order.get("result")
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+
+        skip_tp = True if (take_profit == 0 and tp_price is None) else False
+        skip_sl = True if (stop_loss == 0 and sl_price is None) else False
+
         price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
@@ -336,9 +348,11 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = take_profit
-        tp_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+            
+        if not skip_tp:
+            tp_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
 
         params = {
             "market": symbol,
@@ -355,9 +369,11 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = stop_loss
-        sl_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        
+        if not skip_sl:
+            sl_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
 
         return tp_order.get("result"), sl_order.get("result")
 

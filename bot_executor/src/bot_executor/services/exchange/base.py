@@ -259,7 +259,7 @@ class Base(ABC):
         take_profit = order_info.get("take_profit")
         tp_price = order_info.get("scalp_take_profit")
         sl_price = order_info.get("scalp_stop_loss")
-        if (stop_loss and take_profit) or (tp_price and sl_price):
+        if (stop_loss or take_profit) or (tp_price or sl_price):
             if action == "BUY":
                 tp_order, sl_order = self.create_oco_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
             elif action == "SELL":

@@ -291,8 +291,12 @@ class BinanceClient(Base):
         if self.target != "FUTURE":
             order["amount"] = float(order.get("filled", 0))
         return order
-
+    
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+
+        skip_tp = True if (take_profit == 0 and tp_price is None) else False
+        skip_sl = True if (stop_loss == 0 and sl_price is None) else False
+        
         amount = float(open_order["amount"]) * 0.995
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
@@ -348,14 +352,15 @@ class BinanceClient(Base):
                 if not self.get_position_mode():
                     tp_params["reduceOnly"] = True
 
-            tp_order = self.exchange.create_order(
-                symbol,
-                type=tp_order_type,
-                side="SELL",
-                price=tp_price,
-                amount=amount,
-                params=tp_params
-            )
+            if not skip_tp:
+                tp_order = self.exchange.create_order(
+                    symbol,
+                    type=tp_order_type,
+                    side="SELL",
+                    price=tp_price,
+                    amount=amount,
+                    params=tp_params
+                )
 
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
@@ -374,14 +379,15 @@ class BinanceClient(Base):
                 if not self.get_position_mode():
                     sl_params["reduceOnly"] = True
 
-            sl_order = self.exchange.create_order(
-                symbol,
-                type=sl_order_type,
-                side="SELL",
-                amount=amount,
-                price=sl_price,
-                params=sl_params
-            )
+            if not skip_sl:
+                sl_order = self.exchange.create_order(
+                    symbol,
+                    type=sl_order_type,
+                    side="SELL",
+                    amount=amount,
+                    price=sl_price,
+                    params=sl_params
+                )
         elif self.target == "SPOT":
             tp_order_type = "TAKE_PROFIT_LIMIT" if self.take_profit_type == "LIMIT" else "TAKE_PROFIT"
             sl_order_type = "STOP_LOSS_LIMIT" if self.stop_loss_type == "LIMIT" else "STOP_LOSS"
@@ -409,6 +415,10 @@ class BinanceClient(Base):
         return tp_order, sl_order
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+        
+        skip_tp = True if (take_profit == 0 and tp_price is None) else False
+        skip_sl = True if (stop_loss == 0 and sl_price is None) else False
+        
         amount = float(open_order["amount"]) * 0.995
         amount = float(self.exchange.amount_to_precision(symbol, amount))
         price = float(open_order["average"]) if open_order.get("average") else float(open_order["price"])
@@ -464,14 +474,15 @@ class BinanceClient(Base):
                 if not self.get_position_mode():
                     tp_params["reduceOnly"] = True
 
-            tp_order = self.exchange.create_order(
-                symbol,
-                type=tp_order_type,
-                side="BUY",
-                price=tp_price,
-                amount=amount,
-                params=tp_params
-            )
+            if not skip_tp:
+                tp_order = self.exchange.create_order(
+                    symbol,
+                    type=tp_order_type,
+                    side="BUY",
+                    price=tp_price,
+                    amount=amount,
+                    params=tp_params
+                )
 
             if self.stop_loss_type != "TRAILING":
                 sl_params = {
@@ -490,14 +501,15 @@ class BinanceClient(Base):
                 if not self.get_position_mode():
                     sl_params["reduceOnly"] = True
 
-            sl_order = self.exchange.create_order(
-                symbol,
-                type=sl_order_type,
-                side="BUY",
-                price=sl_price,
-                amount=amount,
-                params=sl_params
-            )
+            if not skip_sl:
+                sl_order = self.exchange.create_order(
+                    symbol,
+                    type=sl_order_type,
+                    side="BUY",
+                    price=sl_price,
+                    amount=amount,
+                    params=sl_params
+                )
         return tp_order, sl_order
 
     def process_oco_order(self, oco_order):
