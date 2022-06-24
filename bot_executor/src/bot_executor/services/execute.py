@@ -27,7 +27,7 @@ def order_execute(order_info: dict):
         "tp_order": None if tp_order is None else tp_order.get("id", tp_order.get("info", {}).get("id")),
         "price": order.get("average", order.get("price")),
         'quantity': exchange.quantity if order.get('id') else 0,
-        'balance': exchange.balance,
+        'balance': exchange.get_balance(),
     }
     logging.debug(f"Results: {result}")
     return result
