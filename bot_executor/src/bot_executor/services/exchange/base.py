@@ -24,6 +24,7 @@ class Base(ABC):
         self.headers = config.get("headers", {})
         self.others = config.get("others", {})
         self.positions = {}
+        self.balance = None
         if self.others is None:
             self.others = {}
 

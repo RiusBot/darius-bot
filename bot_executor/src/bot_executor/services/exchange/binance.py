@@ -109,24 +109,26 @@ class BinanceClient(Base):
         return float(self.exchange.fetchTicker(symbol)['info']["lastPrice"])
 
     def get_balance(self):
-        balance = 0
-        if self.target == "SPOT":
-            assets = self.exchange.fetch_balance()["info"]["balances"]
-            for asset in assets:
-                if asset["asset"] == self.quote:
-                    balance = asset["free"]
-        elif self.target == "MARGIN":
-            assets = self.exchange.fetch_balance()["info"]["userAssets"]
-            for asset in assets:
-                if asset["asset"] == self.quote:
-                    balance = asset["free"]
-        elif self.target == "FUTURE":
-            if self.exchange.fapiPrivate_get_multiassetsmargin().get('multiAssetsMargin'):
-                balance = self.exchange.fetch_balance()['info']['totalMarginBalance']
-            else:
-                balance = self.exchange.fetch_balance().get(self.quote, {}).get('total', 0)
-        logging.debug(f"Balance remain: {balance}")
-        return float(balance)
+        if self.balance is None:
+            balance = 0
+            if self.target == "SPOT":
+                assets = self.exchange.fetch_balance()["info"]["balances"]
+                for asset in assets:
+                    if asset["asset"] == self.quote:
+                        balance = asset["free"]
+            elif self.target == "MARGIN":
+                assets = self.exchange.fetch_balance()["info"]["userAssets"]
+                for asset in assets:
+                    if asset["asset"] == self.quote:
+                        balance = asset["free"]
+            elif self.target == "FUTURE":
+                if self.exchange.fapiPrivate_get_multiassetsmargin().get('multiAssetsMargin'):
+                    balance = self.exchange.fetch_balance()['info']['totalMarginBalance']
+                else:
+                    balance = self.exchange.fetch_balance().get(self.quote, {}).get('total', 0)
+            logging.debug(f"Balance remain: {balance}")
+            self.balance = float(balance)
+        return self.balance
 
     def close_position(self, symbol: str, action: str, amount: float = None):
         position = self.get_position(symbol, action)

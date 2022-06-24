@@ -99,13 +99,15 @@ class OkxClient(Base):
         return float(self.exchange.fetchTicker(symbol)['info']["last"])
 
     def get_balance(self):
-        balance = self.exchange.fetch_balance()
-        if balance["info"]["data"][0]['adjEq']:
-            balance = float(balance["info"]["data"][0]['adjEq'])
-        else:
-            balance = balance.get(self.quote, {}).get('total', 0)
-        logging.debug(f"Balance remain: {balance}")
-        return float(balance)
+        if self.balance is None:
+            balance = self.exchange.fetch_balance()
+            if balance["info"]["data"][0]['adjEq']:
+                balance = float(balance["info"]["data"][0]['adjEq'])
+            else:
+                balance = balance.get(self.quote, {}).get('total', 0)
+            logging.debug(f"Balance remain: {balance}")
+            self.balance = float(balance)
+        return self.balance
     
     def close_position(self, symbol: str, action: str, amount: float = None):
         position = self.get_position(symbol, action)

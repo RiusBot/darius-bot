@@ -71,12 +71,14 @@ class FtxClient(Base):
         return float(self.exchange.fetchTicker(symbol)['bid']) * 1.01
 
     def get_balance(self):
-        balance = 0
-        info = self.exchange.fetch_balance()["info"]
-        for coin in info["result"]:
-            if coin['coin'] == self.quote:
-                balance = coin["total"]
-        return float(balance)
+        if self.balance is None:
+            balance = 0
+            info = self.exchange.fetch_balance()["info"]
+            for coin in info["result"]:
+                if coin['coin'] == self.quote:
+                    balance = coin["total"]
+            self.balance = float(balance)
+        return self.balance
 
     def get_position(self, symbol: str, action: str):
         if self.target != "FUTURE":
@@ -415,6 +417,6 @@ class FtxClient(Base):
         if (not buy_position) and (not sell_position):
             if not sl_closed:
                 self.exchange.cancelOrder(sl_order, symbol)
-            if not tp_closed
+            if not tp_closed:
                 self.exchange.cancelOrder(tp_order, symbol)
             return "closed"
