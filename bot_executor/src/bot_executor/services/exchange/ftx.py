@@ -1,6 +1,7 @@
 import ccxt
 import json
 import logging
+from copy import deepcopy
 from typing import List, Dict, Tuple
 
 from .base import Base
@@ -39,7 +40,6 @@ class FtxClient(Base):
         self.load_markets()
         self.markets = {value.get('id', key): value for key, value in self.markets.items()}
         self.exchange.markets = self.markets
-        self.scalp_quantity()
 
     def load_markets(self):
         global ftx_markets
@@ -48,7 +48,7 @@ class FtxClient(Base):
             self.exchange.markets = ftx_markets
         else:
             self.markets = self.exchange.loadMarkets(True)
-            ftx_markets = self.markets
+            ftx_markets = deepcopy(self.exchange.markets)
     
     def make_symbol(self, symbol: str):
         if self.target != "FUTURE":
@@ -71,39 +71,73 @@ class FtxClient(Base):
         return float(self.exchange.fetchTicker(symbol)['bid']) * 1.01
 
     def get_balance(self):
-        balance = 0
-        info = self.exchange.fetch_balance()["info"]
-        for coin in info["result"]:
-            if coin['coin'] == self.quote:
-                balance = coin["availableWithoutBorrow"]
-        return float(balance)
-    
-    def get_position(self, symbol: str):
+        if self.balance is None:
+            balance = 0
+            info = self.exchange.fetch_balance()["info"]
+            for coin in info["result"]:
+                if coin['coin'] == self.quote:
+                    balance = coin["total"]
+            self.balance = float(balance)
+        return self.balance
+
+    def get_position(self, symbol: str, action: str):
         if self.target != "FUTURE":
             token = symbol.split('/')[0]
             asset = self.exchange.fetch_balance()["total"]
             amount = float(asset.get(token, 0))
-            price = self.get_price(symbol)
-            notional = amount * price
-            return {'notional': notional}
+            if amount > 0:
+                price = self.get_price(symbol)
+                notional = amount * price
+                side = 'BUY' if amount > 0 else "SELL"
+                if side == action:
+                    return {
+                        'symbol': symbol,
+                        'amount': amount,
+                        'notional': notional,
+                        'side': side,
+                        'info': {'side': side.lower()}
+                    }
         elif self.target == "FUTURE":
             positions = self.exchange.fetchPositions()
             for position in positions:
                 if "symbol" in position:
                     info = position.get("info", {})
-                    if info.get('future') == symbol and info.get('entryPrice') and info.get('side'):
+                    if info.get('future') == symbol and info.get('entryPrice') and info.get('side') == action.lower():
                         return position
+
+    def close_position(self, symbol: str, action: str, amount: float = None):
+        position = self.get_position(symbol, action)
+        if position is None:
+            return
+
+        if amount is None:
+            if self.target == "FUTURE":
+                amount = position.get('contracts', 0)
+            else:
+                amount = position.get('amount', 0)
+
+        side = position['info']['side']
+        if side == 'buy':
+            self.create_market_sell(symbol, amount)
+        elif side == 'sell':
+            self.create_market_buy(symbol, amount)
+        else:
+            raise Exception(f"Unknown side {side}")
+
+    def close_all_orders(self):
+        pass
 
     def get_margin(self, symbol: str) -> float:
         margin = self.exchange.private_get_account()["result"]["marginFraction"]
         return 999 if margin is None else float(margin)
 
-    def create_market_buy(self, symbol: str):
+    def create_market_buy(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Market Buy {symbol}
@@ -116,12 +150,14 @@ class FtxClient(Base):
         logging.info(f"Open average price : {order['average']}")
         return order
 
-    def create_limit_buy(self, symbol: str):
-        price = self.get_price(symbol) * 1.01
-        amount = self.quantity / price * self.leverage
+    def create_limit_buy(self, symbol: str, amount: float = None, price: float = None):
+        if price is None:
+            price = self.get_price(symbol) * 1.01
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Limit Buy {symbol}
@@ -139,12 +175,13 @@ class FtxClient(Base):
             order["amount"] = float(order.get("filled", 0))
         return order
 
-    def create_market_sell(self, symbol: str):
+    def create_market_sell(self, symbol: str, amount: float = None):
         price = self.get_price(symbol)
-        amount = self.quantity / price * self.leverage
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Market Sell {symbol}
@@ -157,12 +194,14 @@ class FtxClient(Base):
         logging.info(f"Sell average price : {order['average']}")
         return order
 
-    def create_limit_sell(self, symbol: str):
-        price = self.get_price(symbol) * 0.99
-        amount = self.quantity / price * self.leverage
+    def create_limit_sell(self, symbol: str, amount: float = None, price: float = None):
+        if price is None:
+            price = self.get_price(symbol) * 0.99
+        if amount is None:
+            amount = self.quantity / price * self.leverage
         price = float(self.exchange.price_to_precision(symbol, price))
         amount = float(self.exchange.amount_to_precision(symbol, amount))
-        if amount <= 0:
+        if amount <= 0 or (self.quantity * self.leverage < 10):
             return "quantity too small to make order"
         logging.info(f"""
             Limit Sell {symbol}
@@ -181,6 +220,10 @@ class FtxClient(Base):
         return order
 
     def create_oco_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+        
+        skip_tp = True if (take_profit == 0 and tp_price is None) else False
+        skip_sl = True if (stop_loss == 0 and sl_price is None) else False
+
         price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
@@ -227,9 +270,11 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = price * (1 - take_profit) - price
-        tp_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+            
+        if not skip_tp:
+            tp_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
 
         params = {
             "market": symbol,
@@ -246,13 +291,19 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = price * (1 + stop_loss) - price
-        sl_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        
+        if not skip_sl:
+            sl_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
 
         return tp_order.get("result"), sl_order.get("result")
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
+
+        skip_tp = True if (take_profit == 0 and tp_price is None) else False
+        skip_sl = True if (stop_loss == 0 and sl_price is None) else False
+
         price = float(open_order["price"])
         open_order = self.exchange.fetchOrder(open_order["id"])
         amount = float(open_order["amount"])
@@ -297,9 +348,11 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = take_profit
-        tp_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+            
+        if not skip_tp:
+            tp_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
 
         params = {
             "market": symbol,
@@ -316,9 +369,11 @@ class FtxClient(Base):
         else:
             params["type"] = "trailingStop"
             params["trailValue"] = stop_loss
-        sl_order = self.exchange.private_post_conditional_orders(
-            params=params
-        )
+        
+        if not skip_sl:
+            sl_order = self.exchange.private_post_conditional_orders(
+                params=params
+            )
 
         return tp_order.get("result"), sl_order.get("result")
 
@@ -371,4 +426,13 @@ class FtxClient(Base):
         
         if tp_closed and sl_closed:
             # require check for tp or sl
+            return "closed"
+
+        buy_position = self.get_position(symbol, 'BUY')
+        sell_position = self.get_position(symbol, 'SELL')
+        if (not buy_position) and (not sell_position):
+            if not sl_closed:
+                self.exchange.cancelOrder(sl_order, symbol)
+            if not tp_closed:
+                self.exchange.cancelOrder(tp_order, symbol)
             return "closed"

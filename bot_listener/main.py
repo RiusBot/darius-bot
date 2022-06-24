@@ -50,9 +50,9 @@ async def get_channels():
     for i in [vegas_channel, courage_channel, perpetual_channel, moon_channel, acdc_channel, airforce_channel, cta_channel]:
         print(i)
         print()
-    
+
     await telegram_client.send_message(entity=test_channel, message='start listener')
-    
+
     return test_channel, rose_channel, perpetual_channel, sentiment_channel, justin_channel, whale_channel, scalp_channel, vegas_channel, courage_channel, moon_channel, acdc_channel, airforce_channel, cta_channel
 
 
@@ -178,22 +178,39 @@ async def cta_handler(event):
 
     info = json.loads(event.text)
     info = {symbol: float(amount) for symbol, amount in info.items()}
-    
+
+    busd_state_file = "./cta_state/busd_state"
+    usdt_state_file = "./cta_state/usdt_state"
     if "BUSD" in list(info.keys())[0]:
-        state_file = "./cta_state/busd_state"
+        quote = "BUSD"
     elif "USDT" in list(info.keys())[0]:
-        state_file = "./cta_state/usdt_state"
-    logging.info(f"state file {state_file}")
+        quote = "USDT"
 
-    state = {}
-    if os.path.isfile(f"{state_file}.json"):
-        logging.info("load state")
-        with open(f"{state_file}.json", "r") as f:
-            state = json.load(f)
-            logging.info(f"{state}")
+    def write_state(info: dict):
+        if quote == "BUSD":
+            state_file = busd_state_file
+        elif quote == "USDT":
+            state_file = usdt_state_file
 
-    buy_info = parse.CtaParser("BUY", state).parse(event)
-    sell_info = parse.CtaParser("SELL", state).parse(event)
+        logging.info(f"write state file {state_file}")
+        with open(f"{state_file}.json", "w") as f:
+            json.dump(info, f)
+        with open(f"{state_file}_{int(datetime.now().timestamp())}.json", "w") as f:
+            json.dump(info, f)
+
+    def read_state(state_file: str):
+        state = {}
+        if os.path.isfile(f"{state_file}.json"):
+            logging.info("load state")
+            with open(f"{state_file}.json", "r") as f:
+                state = json.load(f)
+        return state
+
+    usdt_state = read_state(usdt_state_file)
+    busd_state = read_state(busd_state_file)
+
+    buy_info = parse.CtaParser("BUY", usdt_state, busd_state, quote).parse(event)
+    sell_info = parse.CtaParser("SELL", usdt_state, busd_state, quote).parse(event)
 
     logging.info(json.dumps(buy_info, indent=4))
     await send_to_execute(buy_info)
@@ -201,10 +218,7 @@ async def cta_handler(event):
     logging.info(json.dumps(sell_info, indent=4))
     await send_to_execute(sell_info)
 
-    with open(f"{state_file}.json", "w") as f:
-        json.dump(info, f)
-    with open(f"{state_file}_{int(datetime.now().timestamp())}.json", "w") as f:
-        json.dump(info, f)
+    write_state(info)
 
 
 @telegram_client.on(events.NewMessage(from_users=justin_channel, forwards=False))

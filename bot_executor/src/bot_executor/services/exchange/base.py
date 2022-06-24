@@ -23,13 +23,39 @@ class Base(ABC):
         self.options = config.get("options", {})
         self.headers = config.get("headers", {})
         self.others = config.get("others", {})
+        self.positions = {}
+        self.balance = None
+        if self.others is None:
+            self.others = {}
 
-    def scalp_quantity(self):
+    def scalp_quantity(self, action: str):
         if isinstance(self.config.get("scalp_quantity"), float):
-            remain_balance = self.get_balance()
+
+            symbol = self.make_symbol(self.config["symbol"])
             scalp_quantity = abs(self.config["scalp_quantity"])
-            self.quantity = scalp_quantity * remain_balance
-            logging.info(f"Balance: {remain_balance}, scalp quantity: {scalp_quantity}, quantity: {self.quantity}")
+
+            if scalp_quantity == 0:
+                self.close_position(symbol, "SELL")
+                self.close_position(symbol, "BUY")
+            elif action == "BUY":
+                self.close_position(symbol, "SELL")
+            elif action == "SELL":
+                self.close_position(symbol, "BUY")
+
+            total_balance = self.get_balance()
+            position = self.get_position(symbol, action)
+            position_notional = position.get('notional', 0) if position else 0
+            required_notional = scalp_quantity * total_balance * self.leverage
+
+            if abs(required_notional - position_notional) <= 20:
+                self.config["scalp_quantity"] = 0
+            elif required_notional > position_notional + 20:
+                self.quantity = (required_notional - position_notional) / self.leverage
+            else:
+                self.close_position(symbol, action)
+                self.quantity = scalp_quantity * total_balance
+
+            logging.info(f"Balance: {total_balance}, scalp quantity: {scalp_quantity}, quantity: {self.quantity}, position: {position_notional}, required: {required_notional}")
 
     def clean_limit_order(self, open_order: str, symbol: str):
         result = None
@@ -95,10 +121,47 @@ class Base(ABC):
     @abstractmethod
     def get_balance(self) -> float:
         raise NotImplementedError
-        
+
+    def get_position(self, symbol: str, action: str):
+        # return dict requires {"notional", "side", "symbol", "amount"} for position duplicate check
+        if self.target == "SPOT" or self.target == "MARGIN":
+            positions = self.get_all_positions()
+            if symbol in positions:
+                amount = positions[symbol]
+                price = self.get_price(symbol)
+                notional = amount * price
+                side = 'BUY' if amount > 0 else "SELL"
+                if side == action:
+                    return {
+                        'symbol': symbol,
+                        'amount': amount,
+                        'notional': notional,
+                        'side': side,
+                    }
+        elif self.target == "FUTURE":
+            side = {
+                "BUY": {"BUY", "LONG"},
+                "SELL": {"SELL", "SHORT"},
+            }
+            for position in self.get_all_positions():
+                if position.get('symbol') == symbol and position.get('side').upper() in side[action]:
+                    # position['side'] = action
+                    return position
+
+    def get_all_positions(self, reload=False) -> dict:
+        if self.positions == {} or reload:
+            if self.target != "FUTURE":
+                asset = self.exchange.fetch_balance()["free"]
+                self.positions = {
+                    self.make_symbol(token): float(amount)
+                    for token, amount in asset.items()
+                }
+            elif self.target == "FUTURE":
+                self.positions = [i for i in self.exchange.fetchPositions() if i['side']]
+        return self.positions
+
     @abstractmethod
-    def get_position(self, symbol: str) -> dict:
-        # return dict requires {"notional", "side"} for position duplicate check
+    def close_all_orders(self) -> dict:
         raise NotImplementedError
 
     @abstractmethod
@@ -135,24 +198,14 @@ class Base(ABC):
 
     def validate_duplicate(self, symbol: str, action: str):
         logging.info(f"check {symbol} {action} {self.target} position if duplicate")
-        position = self.get_position(symbol)
+        position = self.get_position(symbol, action)
         if position:
             notional = position.get('notional', 0)
 
             if self.target == "FUTURE":
-                side = position.get('side')
-                logging.info(f"{symbol} has exists {side} position.")
-                side_map = {
-                    "BUY": ("BUY", "LONG"),
-                    "SELL": ("SHORT", "SELL")
-                }
-                if side.upper() not in side_map[action]:
-                    return  # opposite side then dont count as duplicate
-
                 if notional > (self.quantity / 20):  # if position too small then dont count as duplicate
                     logging.info(f"{symbol} has {notional} notional.")
                     return "Position duplicate"
-
             else:
                 if action == "BUY" and notional > (self.quantity / 20):
                     logging.info(f"{symbol} has {notional} notional.")
@@ -176,17 +229,24 @@ class Base(ABC):
             logging.error(err_msg)
             return err_msg
 
+        self.scalp_quantity(action)
+        if self.config.get("scalp_quantity") == 0:
+            return {"msg": "close position. Ignore this error."}
+
         open_order = None
+        entry = self.config.get("scalp_entry")
+        amount = self.config.get('amount')
+
         if action == "BUY":
             if self.order_type == "LIMIT":
-                open_order = self.create_limit_buy(symbol)
+                open_order = self.create_limit_buy(symbol, amount, entry)
             elif self.order_type == "MARKET":
-                open_order = self.create_market_buy(symbol)
+                open_order = self.create_market_buy(symbol, amount)
         elif action == "SELL":
             if self.order_type == "LIMIT":
-                open_order = self.create_limit_sell(symbol)
+                open_order = self.create_limit_sell(symbol, amount, entry)
             elif self.order_type == "MARKET":
-                open_order = self.create_market_sell(symbol)
+                open_order = self.create_market_sell(symbol, amount)
         return open_order
 
     def make_oco_order(self, open_order: dict, order_info: dict) -> Tuple[dict, dict]:
@@ -199,7 +259,7 @@ class Base(ABC):
         take_profit = order_info.get("take_profit")
         tp_price = order_info.get("scalp_take_profit")
         sl_price = order_info.get("scalp_stop_loss")
-        if (stop_loss and take_profit) or (tp_price and sl_price):
+        if (stop_loss or take_profit) or (tp_price or sl_price):
             if action == "BUY":
                 tp_order, sl_order = self.create_oco_order(symbol, open_order, take_profit, stop_loss, tp_price, sl_price)
             elif action == "SELL":

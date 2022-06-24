@@ -42,8 +42,8 @@ def main():
     except ccxt.BaseError as e:
         order_info.pop('token', None)
         logging.error(f"Order info: {order_info}")
-        logging.exception("")
-        traceback.format_exc()
+        logging.error(repr(e))
+        # traceback.format_exc()
         return jsonify({"error_message": repr(e)}), 500
     except Exception as e:
         logging.exception("")
@@ -59,12 +59,15 @@ def clean():
             raise Exception("access token is not valid")
         result = order_clean(order_info)
         return jsonify(result), 200
-    except Exception as e:
+    except ccxt.BaseError as e:
         order_info.pop('token', None)
         logging.error(f"Order info: {order_info}")
-        logging.exception("")
-        traceback.format_exc()
+        logging.error(repr(e))
+        # traceback.format_exc()
         return jsonify({"error_message": repr(e)}), 500
+    except Exception as e:
+        logging.exception("")
+        return jsonify({"error_message": 'Bot Unexpected Error'}), 500
 
 
 if __name__ == "__main__":
