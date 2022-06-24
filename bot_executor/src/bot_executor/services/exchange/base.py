@@ -44,15 +44,15 @@ class Base(ABC):
             total_balance = self.get_balance()
             position = self.get_position(symbol, action)
             position_notional = position.get('notional', 0) if position else 0
-            required_notional = scalp_quantity * total_balance
+            required_notional = scalp_quantity * total_balance * self.leverage
 
             if abs(required_notional - position_notional) <= 20:
-                self.quantity = 0
+                self.config["scalp_quantity"] = 0
             elif required_notional > position_notional + 20:
-                self.quantity = required_notional - position_notional
+                self.quantity = (required_notional - position_notional) / self.leverage
             else:
                 self.close_position(symbol, action)
-                self.quantity = required_notional
+                self.quantity = scalp_quantity * total_balance
 
             logging.info(f"Balance: {total_balance}, scalp quantity: {scalp_quantity}, quantity: {self.quantity}, position: {position_notional}, required: {required_notional}")
 
@@ -229,8 +229,8 @@ class Base(ABC):
             return err_msg
 
         self.scalp_quantity(action)
-        if self.config.get("scalp_quantity") == 0 or self.quantity == 0:
-            return {}
+        if self.config.get("scalp_quantity") == 0:
+            return {"msg": "close position. Ignore this error."}
 
         open_order = None
         entry = self.config.get("scalp_entry")

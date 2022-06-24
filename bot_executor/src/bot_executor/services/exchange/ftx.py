@@ -409,3 +409,12 @@ class FtxClient(Base):
         if tp_closed and sl_closed:
             # require check for tp or sl
             return "closed"
+
+        buy_position = self.get_position(symbol, 'BUY')
+        sell_position = self.get_position(symbol, 'SELL')
+        if (not buy_position) and (not sell_position):
+            if not sl_closed:
+                self.exchange.cancelOrder(sl_order, symbol)
+            if not tp_closed
+                self.exchange.cancelOrder(tp_order, symbol)
+            return "closed"

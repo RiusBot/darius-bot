@@ -539,3 +539,12 @@ class BinanceClient(Base):
 
         if sl_order_info["status"] == "closed" and tp_order_info["status"] == "open":
             return "closed"
+        
+        buy_position = self.get_position(symbol, 'BUY')
+        sell_position = self.get_position(symbol, 'SELL')
+        if (not buy_position) and (not sell_position):
+            if sl_order_info["status"] == "open":
+                self.exchange.cancelOrder(sl_order, symbol)
+            if tp_order_info["status"] == "open":
+                self.exchange.cancelOrder(tp_order, symbol)
+            return "closed"
