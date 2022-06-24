@@ -7,6 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from bot_optimizer.config import configure_logging, get_db_uri
 from bot_optimizer.services import validators
 from bot_optimizer.services.freqtrade import freqtrade_hyperopt, freqtrade_backtest
+from bot_optimizer.services.freqtrade_v2 import freqtrade_hyperopt_v2, freqtrade_backtest_v2
 from bot_optimizer.services.auth import authenticate
 
 
@@ -48,6 +49,23 @@ def hyperopt():
         return jsonify({"error_message": error}), 500
 
 
+@app.route("/hyperopt_v2", methods=["POST"])
+@validators.hyperopt_validator
+def hyperopt_v2():
+    json_paylaod = request.get_json()
+    try:
+        if authenticate(json_paylaod) is False:
+            raise Exception("access token is not valid")
+        result = freqtrade_hyperopt_v2(db, json_paylaod)
+        return jsonify(result), 200
+    except Exception as e:
+        logging.info(json.dumps(json_paylaod, indent=4))
+        logging.exception("")
+        error = traceback.format_exc()
+        error = str(e)
+        return jsonify({"error_message": error}), 500
+
+
 @app.route("/backtest", methods=["POST"])
 @validators.backtest_validator
 def backtest():
@@ -56,6 +74,23 @@ def backtest():
         if authenticate(json_paylaod) is False:
             raise Exception("access token is not valid")
         result = freqtrade_backtest(db, json_paylaod)
+        return jsonify(result), 200
+    except Exception as e:
+        logging.info(json.dumps(json_paylaod, indent=4))
+        logging.exception("")
+        error = traceback.format_exc()
+        error = str(e)
+        return jsonify({"error_message": error}), 500
+
+
+@app.route("/backtest_v2", methods=["POST"])
+@validators.backtest_validator
+def backtest_v2():
+    json_paylaod = request.get_json()
+    try:
+        if authenticate(json_paylaod) is False:
+            raise Exception("access token is not valid")
+        result = freqtrade_backtest_v2(db, json_paylaod)
         return jsonify(result), 200
     except Exception as e:
         logging.info(json.dumps(json_paylaod, indent=4))
