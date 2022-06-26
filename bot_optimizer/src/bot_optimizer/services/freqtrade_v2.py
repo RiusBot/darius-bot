@@ -13,6 +13,7 @@ from freqtrade.commands import Arguments
 
 from bot_optimizer import config
 from bot_optimizer.strategies import riusbot_hedge
+from bot_optimizer.services.metric import add_metrics_v2
 from bot_optimizer.adapters.mysql.utils import create_performance, create_hyperopt, get_hyperopt, get_message, get_channel
 
 
@@ -46,7 +47,17 @@ def read_message(
         if symbol in exchange.markets:
             pairs.append(symbol)
 
-    pairs = list(set(pairs))
+    exchange = ccxt.binance({
+        "enableRateLimit": True,
+        'options': {
+            "defaultType": 'future',
+            "adjustForTimeDifference": True,
+            "verbose": True,
+        },
+    })
+    available_pairs = set(exchange.loadMarkets().keys())
+    rm_pairs = set(["OP/USDT"])
+    pairs = list((set(pairs) & available_pairs) - rm_pairs)
     return message, pairs
 
         
@@ -91,7 +102,7 @@ def freqtrade_create_config(params, message, pairs):
 def freqtrade_download_data(exchange: str, timeframe: str, timerange: str):
     for _ in range(3):
         try:
-            logging.info("download data")
+            logging.info(f"download data {timerange}")
             sysargv = f"download-data --exchange {exchange} --timeframe {timeframe} --timerange {timerange}"
             freqtrade_run(sysargv)
             return
@@ -180,6 +191,7 @@ def freqtrade_backtest_v2(db, json_payload: dict):
     channel_list = json_payload.get('channels', get_channel(db))
     loss_list = json_payload.get('loss', ["SharpeHyperOptLoss"])
     create = json_payload.get('create', True)
+    all_time = json_payload.get('all_time', False)
     output = defaultdict(dict)
 
     # ignore channel
@@ -189,7 +201,7 @@ def freqtrade_backtest_v2(db, json_payload: dict):
     # remove hyperopt params file
     if os.path.isfile("user_data/strategies/riusbot_hedge.json"):
         os.remove("user_data/strategies/riusbot_hedge.json")
-    
+
     for channel in channel_list:
 
         for loss in loss_list:  # config.Hyperopt_Loss:
@@ -198,14 +210,20 @@ def freqtrade_backtest_v2(db, json_payload: dict):
                 backtest_result = None
                 hyperopt = get_hyperopt(db, channel, loss, start_at)
                 params = json.loads(hyperopt.to_dict()['params'])
+                if all_time:
+                    start_at = datetime.fromtimestamp(0)
+                    timerange = f'20210101-{end_at.strftime("%Y%m%d")}'
                 freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange, params)
 
-                sysargv = f"backtesting --strategy-list riusbot_hedge --timeframe {timeframe} --timerange {timerange} --eps"
+                sysargv = f"backtesting --strategy riusbot_hedge --timeframe {timeframe} --timerange {timerange} --eps"
                 freqtrade_run(sysargv)
                 with open("user_data/backtest_results/.last_result.json", "r") as f:
                     last_result_path = json.load(f)['latest_backtest']
                 with open(os.path.join("user_data/backtest_results", last_result_path), "r") as f:
                     backtest_result = json.load(f)
+
+                if all_time:
+                    backtest_result = add_metrics_v2(backtest_result)
 
                 if create:
                     create_performance(

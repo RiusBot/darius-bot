@@ -21,11 +21,12 @@ RUN apt install -y \
 # Freqtrade
 RUN git clone https://github.com/freqtrade/freqtrade.git
 WORKDIR freqtrade
-RUN git checkout stable
+RUN git checkout tags/2022.5
 RUN chmod +x ./build_helpers/install_ta-lib.sh
 RUN cd build_helpers && ./install_ta-lib.sh
 RUN pip3 install -r requirements-hyperopt.txt
-RUN pip3 install freqtrade==2022.1
+RUN pip3 install freqtrade==2022.5
+RUN pip3 install -U numpy
 
 
 # API dependecies + config

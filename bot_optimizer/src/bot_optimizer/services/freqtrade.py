@@ -46,7 +46,16 @@ def read_message(
         if symbol in exchange.markets:
             pairs.append(symbol)
 
-    pairs = list(set(pairs))
+    exchange = ccxt.binance({
+        "enableRateLimit": True,
+        'options': {
+            "defaultType": 'future',
+            "adjustForTimeDifference": True,
+            "verbose": True,
+        },
+    })
+    available_pairs = set(exchange.loadMarkets().keys())
+    pairs = list(set(pairs) & available_pairs)
     return message, pairs
 
         

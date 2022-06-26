@@ -196,7 +196,7 @@ deploy-bot-optimizer: set-project
 			--platform managed \
 			--cpu 4 \
 			--concurrency 1 \
-			--timeout 30m \
+			--timeout 60m \
 			--memory 4Gi \
 			--max-instances 3 \
 			--update-env-vars='project_id=$(PROJECT_ID)'

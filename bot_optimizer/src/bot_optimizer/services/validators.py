@@ -88,7 +88,7 @@ def backtest_validator(f):
         string_fields = ["timeframe", 'timerange', 'exchange']
         numeric_fields = []
         dict_fields = []
-        bool_fields = []
+        bool_fields = ['all_time']
         list_fields = []
         fields = [mandatory_fields, string_fields, numeric_fields, dict_fields, bool_fields, list_fields]
         return validate(f, fields, *args, **kwargs)
