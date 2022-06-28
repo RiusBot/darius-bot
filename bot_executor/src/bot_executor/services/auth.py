@@ -76,7 +76,6 @@ def check_server_access(json_payload):
 
 
 def authenticate(json_payload):
-    return True
     if usingProjectId != "local":
         if check_client_access(json_payload) is False:
             if check_server_access(json_payload) is False:
