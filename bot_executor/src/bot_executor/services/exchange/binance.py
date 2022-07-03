@@ -181,16 +181,6 @@ class BinanceClient(Base):
             side='BUY',
             params={'positionSide': positionSide}
         )
-            
-    def close_all_orders(self):
-        if self.target == 'FUTURE':
-            # Cancel All Open Orders
-            pass
-        else:
-            # query all open order
-            # query all open oco order
-            # cancel them all one by noe
-            pass
 
     def get_margin(self, symbol: str) -> float:
         margin = None

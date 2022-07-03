@@ -34,11 +34,6 @@ class Base(ABC):
             symbol = self.make_symbol(self.config["symbol"])
             scalp_quantity = abs(self.config["scalp_quantity"])
 
-            try:
-                self.close_all_orders()
-            except Exception as e:
-                logging.error(f"close all order failed. {e}")
-
             if scalp_quantity == 0:
                 self.close_position(symbol, "SELL")
                 self.close_position(symbol, "BUY")
@@ -57,8 +52,10 @@ class Base(ABC):
             elif abs(required_notional - position_notional) <= 20:
                 self.config["scalp_quantity"] = 0
             elif required_notional > position_notional + 20:
+                self.close_all_orders(symbol=symbol)
                 self.quantity = (required_notional - position_notional) / self.leverage
             else:
+                self.close_all_orders(symbol=symbol)
                 self.close_position(symbol, action)
                 self.quantity = scalp_quantity * total_balance
 
@@ -172,8 +169,8 @@ class Base(ABC):
             self.close_position(symbol, "BUY")
         return "closed"
 
-    def close_all_orders(self) -> dict:
-        for order in self.exchange.fetchOpenOrders():
+    def close_all_orders(self, symbol=None) -> dict:
+        for order in self.exchange.fetchOpenOrders(symbol=symbol):
             self.exchange.cancel_order(id=order["id"], symbol=order["symbol"])
 
     @abstractmethod

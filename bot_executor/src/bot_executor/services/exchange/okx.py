@@ -144,9 +144,6 @@ class OkxClient(Base):
                 except:
                     self.create_limit_buy(symbol, amount)
 
-    def close_all_orders(self):
-        pass
-
     def get_margin(self, symbol: str) -> float:
         margin = self.exchange.fetch_balance()['info']['data'][0]['mgnRatio']
         margin = float(margin) if margin else float('inf')
