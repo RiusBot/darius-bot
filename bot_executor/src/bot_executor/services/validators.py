@@ -154,7 +154,7 @@ def clean_validator(f):
             "order_type": {"LIMIT", "MARKET"},
             "stop_loss_type": {"LIMIT", "MARKET", "TRAILING"},
             "take_profit_type": {"LIMIT", "MARKET", "TRAILING"},
-            "exchange": {"binance", "ftx", "ftxus"},
+            "exchange": {"binance", "ftx", "ftxus", "okx"},
             'type': {'oco', 'limit', 'position'}
         }
         data = request.get_json()

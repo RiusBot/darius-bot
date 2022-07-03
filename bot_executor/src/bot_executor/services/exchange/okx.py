@@ -134,9 +134,15 @@ class OkxClient(Base):
         else:
             logging.info(f"Close spot position. symbol: {symbol}, amount: {amount}")
             if position['side'] == 'BUY':
-                self.create_market_sell(symbol, amount)
+                try:
+                    self.create_market_sell(symbol, amount)
+                except:
+                    self.create_limit_sell(symbol, amount)
             elif position['side'] == 'SELL':
-                self.create_market_buy(symbol, amount)
+                try:
+                    self.create_market_buy(symbol, amount)
+                except:
+                    self.create_limit_buy(symbol, amount)
 
     def close_all_orders(self):
         pass

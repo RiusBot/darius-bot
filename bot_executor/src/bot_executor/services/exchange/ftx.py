@@ -391,6 +391,17 @@ class FtxClient(Base):
         margin = self.get_margin(symbol)
         if margin < self.margin:
             return f"invalid margin. Current: {margin}, restrict: {self.margin}"
+        
+    def close_all_orders(self):
+        super().close_all_orders()
+        
+        ftx_response = self.exchange.private_get_conditional_orders()
+        if ftx_response.get('success'):
+            open_conditional_order_list = ftx_response['result']
+            for order in open_conditional_order_list:
+                self.exchange.cancelOrder(order["id"], order['market'], {'method': 'privateDeleteConditionalOrdersOrderId'})
+        else:
+            logging.error(f"{ftx_response}")
 
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         symbol = self.make_symbol(symbol)

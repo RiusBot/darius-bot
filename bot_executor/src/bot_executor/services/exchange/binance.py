@@ -24,6 +24,7 @@ class BinanceClient(Base):
                 'future': 'x-61E2GsBt',
                 'delivery': 'x-61E2GsBt',
             },
+            "warnOnFetchOpenOrdersWithoutSymbol": False
         })
 
         self.exchange = ccxt.binance({
@@ -144,7 +145,6 @@ class BinanceClient(Base):
                 amount = position.get('amount', 0)
         
         if self.target == "FUTURE":
-            
             positionSide = position['info']['positionSide']
             side = position['side']
             if side is None:

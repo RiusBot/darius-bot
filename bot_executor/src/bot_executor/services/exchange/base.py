@@ -34,6 +34,11 @@ class Base(ABC):
             symbol = self.make_symbol(self.config["symbol"])
             scalp_quantity = abs(self.config["scalp_quantity"])
 
+            try:
+                self.close_all_orders()
+            except Exception as e:
+                logging.error(f"close all order failed. {e}")
+
             if scalp_quantity == 0:
                 self.close_position(symbol, "SELL")
                 self.close_position(symbol, "BUY")
@@ -47,15 +52,15 @@ class Base(ABC):
             position_notional = position.get('notional', 0) if position else 0
             required_notional = scalp_quantity * total_balance * self.leverage
 
-            if abs(required_notional - position_notional) <= 20:
+            if total_balance == 0:
+                self.quantity = 0
+            elif abs(required_notional - position_notional) <= 20:
                 self.config["scalp_quantity"] = 0
             elif required_notional > position_notional + 20:
                 self.quantity = (required_notional - position_notional) / self.leverage
             else:
                 self.close_position(symbol, action)
                 self.quantity = scalp_quantity * total_balance
-
-            logging.info(f"Balance: {total_balance}, scalp quantity: {scalp_quantity}, quantity: {self.quantity}, position: {position_notional}, required: {required_notional}")
 
     def clean_limit_order(self, open_order: str, symbol: str):
         result = None
@@ -144,7 +149,7 @@ class Base(ABC):
                 "SELL": {"SELL", "SHORT"},
             }
             for position in self.get_all_positions():
-                if position.get('symbol') == symbol and position.get('side').upper() in side[action]:
+                if position.get('symbol') == symbol and position.get('side', '').upper() in side[action]:
                     # position['side'] = action
                     return position
 
@@ -157,12 +162,19 @@ class Base(ABC):
                     for token, amount in asset.items()
                 }
             elif self.target == "FUTURE":
-                self.positions = [i for i in self.exchange.fetchPositions() if i['side']]
+                self.positions = [i for i in self.exchange.fetchPositions() if i['notional']]
         return self.positions
+      
+    def close_all_positions(self):
+        all_positions = set([i['symbol'] for i in self.get_all_positions()])
+        for symbol in all_positions:
+            self.close_position(symbol, "SELL")
+            self.close_position(symbol, "BUY")
+        return "closed"
 
-    @abstractmethod
     def close_all_orders(self) -> dict:
-        raise NotImplementedError
+        for order in self.exchange.fetchOpenOrders():
+            self.exchange.cancel_order(id=order["id"], symbol=order["symbol"])
 
     @abstractmethod
     def get_margin(self) -> float:
