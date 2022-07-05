@@ -102,7 +102,7 @@ class FtxClient(Base):
             for position in positions:
                 if "symbol" in position:
                     info = position.get("info", {})
-                    if info.get('future') == symbol and info.get('entryPrice') and info.get('side') == action.lower():
+                    if info.get('future').split('-')[0] in symbol and info.get('entryPrice') and info.get('side') == action.lower():
                         return position
 
     def close_position(self, symbol: str, action: str, amount: float = None):
@@ -123,9 +123,6 @@ class FtxClient(Base):
             self.create_market_buy(symbol, amount)
         else:
             raise Exception(f"Unknown side {side}")
-
-    def close_all_orders(self):
-        pass
 
     def get_margin(self, symbol: str) -> float:
         margin = self.exchange.private_get_account()["result"]["marginFraction"]
@@ -392,8 +389,8 @@ class FtxClient(Base):
         if margin < self.margin:
             return f"invalid margin. Current: {margin}, restrict: {self.margin}"
         
-    def close_all_orders(self):
-        super().close_all_orders()
+    def close_all_orders(self, symbol=None):
+        super().close_all_orders(symbol)
         
         ftx_response = self.exchange.private_get_conditional_orders()
         if ftx_response.get('success'):

@@ -109,6 +109,42 @@ class OkxClient(Base):
             self.balance = float(balance)
         return self.balance
     
+    def close_all_orders(self, symbol=None):
+        super().close_all_orders(symbol)
+
+        okx_response = self.exchange.private_get_trade_orders_algo_pending(params={'ordType':"conditional"})
+        if okx_response.get('code') == 0:
+            open_conditional_order_list = ftx_response['data']
+            open_conditional_order_list = [
+                {'instId': order['instId'], 'algoId': order['algoId']}
+                for order in open_conditional_order_list
+            ]
+            tmp.private_post_trade_cancel_algos(params=open_conditional_order_list)
+        else:
+            logging.error(f"{okx_response}")
+
+        okx_response = self.exchange.private_get_trade_orders_algo_pending(params={'ordType':"oco"})
+        if okx_response.get('code') == 0:
+            open_conditional_order_list = ftx_response['data']
+            open_conditional_order_list = [
+                {'instId': order['instId'], 'algoId': order['algoId']}
+                for order in open_conditional_order_list
+            ]
+            tmp.private_post_trade_cancel_algos(params=open_conditional_order_list)
+        else:
+            logging.error(f"{okx_response}")
+
+        okx_response = self.exchange.private_get_trade_orders_algo_pending(params={'ordType':"trigger"})
+        if okx_response.get('code') == 0:
+            open_conditional_order_list = ftx_response['data']
+            open_conditional_order_list = [
+                {'instId': order['instId'], 'algoId': order['algoId']}
+                for order in open_conditional_order_list
+            ]
+            tmp.private_post_trade_cancel_algos(params=open_conditional_order_list)
+        else:
+            logging.error(f"{okx_response}")
+
     def close_position(self, symbol: str, action: str, amount: float = None):
         position = self.get_position(symbol, action)
         if position is None:
