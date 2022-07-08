@@ -336,6 +336,9 @@ class OkxClient(Base):
         if self.take_profit_type != "TRAILING":
             if not skip_tp:
                 tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
+
+        tp_order = self.oco_order_post_process(tp_order)
+        sl_order = self.oco_order_post_process(sl_order)
         return tp_order, sl_order
 
     def create_oco_short_order(self, symbol: str, open_order: dict, take_profit: float, stop_loss: float, tp_price: float, sl_price: float):
@@ -381,6 +384,9 @@ class OkxClient(Base):
         if self.take_profit_type != "TRAILING":
             if not skip_tp:
                 tp_order = self.exchange.private_post_trade_order_algo(params=tp_params)
+
+        tp_order = self.oco_order_post_process(tp_order)
+        sl_order = self.oco_order_post_process(sl_order)
         return tp_order, sl_order
 
     def create_oco_params(self, params: dict, sl_price: float, tp_price: float, price: float, take_profit: float, stop_loss: float):
@@ -414,6 +420,17 @@ class OkxClient(Base):
             }
 
         return {**params, **sl_params}, {**params, **tp_params}
+
+    def oco_order_post_process(self, order):
+        try:
+            if isinstance(order, dict):
+                if order['code'] == '0':
+                    if 'algoId' in order['data'][0]:
+                        order['id'] = order['data'][0]['algoId']
+        except Exception as e:
+            logging.error(e)
+        finally:
+            return order
 
     def validate_margin(self, symbol: str):
         margin = self.get_margin(symbol)

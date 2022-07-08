@@ -8,14 +8,14 @@ class AirforceParser(BaseParser):
         self.name = "SPACEFORCE"
 
     def parse_symbol(self, message: str):
-        text = message.split('\n')
+        text = message.strip().split('\n')
         title = text[0]
-        info = {i.split(':')[0]: i.split(':')[1] for i in text[1:]}
+        info = {i.split(':')[0]: i.split(':')[1] for i in text[2:]}
         return info["標的"].replace("USDT", "")
 
     def parse_action(self, message: str):
-        text = message.split('\n')
-        title = text[0]
+        text = message.strip().split('\n')
+        title = text[1]
         if "開倉" in title:
             return "SELL"
         elif "平倉" in title:
@@ -36,8 +36,8 @@ class AirforceParser(BaseParser):
         take_profit = None
         func = max if self.action == "BUY" else min
 
-        text = message.split('\n')
-        info = {i.split(':')[0]: i.split(':')[1] for i in text[1:]}
+        text = message.strip().split('\n')
+        info = {i.split(':')[0]: i.split(':')[1] for i in text[2:]}
         stop_loss = float(info.get('止損', 0))
         take_profit = float(info.get('止盈', 0))
         entry = float(info.get('當前價位', 0))
