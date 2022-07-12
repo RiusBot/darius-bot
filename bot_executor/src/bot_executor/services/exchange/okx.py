@@ -441,12 +441,17 @@ class OkxClient(Base):
         symbol = self.make_symbol(symbol)
         tp_order_info = {'status': 'unknown'}
         sl_order_info = {'status': 'unknown'}
+        open_orders = self.exchange.fetchOpenOrders(symbol)
 
         if tp_order:
-            tp_order_info = self.exchange.fetchOrder(tp_order, symbol)
+            for order in open_orders:
+                if order["id"] == tp_order:
+                    tp_order_info = order
 
         if sl_order:
-            sl_order_info = self.exchange.fetchOrder(sl_order, symbol)
+            for order in open_orders:
+                if order["id"] == sl_order:
+                    sl_order_info = order
 
         if tp_order_info["status"] == "closed" and sl_order_info["status"] == "open":
             self.exchange.cancelOrder(sl_order, symbol)
@@ -456,7 +461,7 @@ class OkxClient(Base):
             self.exchange.cancelOrder(tp_order, symbol)
             return "SL"
 
-        if sl_order_info["status"] == "closed" and tp_order_info["status"] == "open":
+        if sl_order_info["status"] == "closed" and tp_order_info["status"] == "closed":
             return "closed"
         
         buy_position = self.get_position(symbol, 'BUY')
