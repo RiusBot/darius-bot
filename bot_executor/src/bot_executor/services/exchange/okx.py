@@ -45,6 +45,11 @@ class OkxClient(Base):
             logging.error(f"Authenticate Requirements: {json.dumps(self.exchange.requiredCredentials, indent=4)}")
             raise e
 
+        try:
+            self.exchange.private_post_account_set_position_mode(params={'posMode': 'net_mode'})
+        except:
+            pass
+
         self.load_markets()
         self.market_postprocess()
         self.account_config = self.exchange.private_get_account_config()['data'][0]
@@ -436,39 +441,42 @@ class OkxClient(Base):
         margin = self.get_margin(symbol)
         if margin < self.margin:
             return f"invalid margin. Current: {margin}, restrict: {self.margin}"
-        
+
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         symbol = self.make_symbol(symbol)
-        tp_order_info = {'status': 'unknown'}
-        sl_order_info = {'status': 'unknown'}
-        open_orders = self.exchange.fetchOpenOrders(symbol)
+        tp_order_info = {'status': 'closed'}
+        sl_order_info = {'status': 'closed'}
+        open_orders = self.exchange.private_get_trade_orders_algo_pending(params={'ordType': 'conditional'})
+        open_orders = [i['data'] for i in open_orders if symbol == i['data']['instId']]
 
         if tp_order:
             for order in open_orders:
-                if order["id"] == tp_order:
+                if order["algoId"] == tp_order:
                     tp_order_info = order
+                    tp_order_info['status'] = "open"
 
         if sl_order:
             for order in open_orders:
-                if order["id"] == sl_order:
+                if order["algoId"] == sl_order:
                     sl_order_info = order
+                    sl_order_info['status'] = "open"
 
         if tp_order_info["status"] == "closed" and sl_order_info["status"] == "open":
-            self.exchange.cancelOrder(sl_order, symbol)
+            self.exchange.private_post_trade_cancel_algos(params=[{'instId': symbol, 'algoId': sl_order}])
             return "TP"
 
         if sl_order_info["status"] == "closed" and tp_order_info["status"] == "open":
-            self.exchange.cancelOrder(tp_order, symbol)
+            self.exchange.private_post_trade_cancel_algos(params=[{'instId': symbol, 'algoId': tp_order}])
             return "SL"
 
-        if sl_order_info["status"] == "closed" and tp_order_info["status"] == "closed":
+        if sl_order_info["status"] != "open" and tp_order_info["status"] != "open":
             return "closed"
-        
+
         buy_position = self.get_position(symbol, 'BUY')
         sell_position = self.get_position(symbol, 'SELL')
         if (not buy_position) and (not sell_position):
             if sl_order_info["status"] == "open":
-                self.exchange.cancelOrder(sl_order, symbol)
+                self.exchange.private_post_trade_cancel_algos(params=[{'instId': symbol, 'algoId': tp_order}])
             if tp_order_info["status"] == "open":
-                self.exchange.cancelOrder(tp_order, symbol)
+                self.exchange.private_post_trade_cancel_algos(params=[{'instId': symbol, 'algoId': sl_order}])
             return "closed"

@@ -88,6 +88,8 @@ class riusbot_hedge(IStrategy):
         'stoploss_on_exchange': False
     }
 
+    position_adjustment_enable = True
+
     # Optional order time in force.
     order_time_in_force = {
         'entry': 'gtc',
@@ -181,6 +183,8 @@ class riusbot_hedge(IStrategy):
         """
 
         dataframe['riusbot_quantity'] = 0
+        dataframe["exit_long"] = 1
+        dataframe["exit_short"] = 1
 
         # Momentum Indicators
         # ------------------------------------
@@ -394,6 +398,10 @@ class riusbot_hedge(IStrategy):
                             proposed_stake: float, min_stake: float, max_stake: float,
                             entry_tag: Optional[str], side: str, **kwargs) -> float:
 
+        if pair in self.wallets._positions:
+            # do not entry again
+            return 0
+        
         dataframe, _ = self.dp.get_analyzed_dataframe(pair=pair, timeframe=self.timeframe)
         current_candle = dataframe.iloc[-1].squeeze()
 
@@ -403,8 +411,38 @@ class riusbot_hedge(IStrategy):
         # Use default stake amount.
         return proposed_stake
     
-    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    def adjust_trade_position(self, trade, current_time: datetime,
+                              current_rate: float, current_profit: float, min_stake: Optional[float],
+                              max_stake: float, **kwargs):
+        """
+        Custom trade adjustment logic, returning the stake amount that a trade should be increased.
+        This means extra buy orders with additional fees.
+
+        :param trade: trade object.
+        :param current_time: datetime object, containing the current datetime
+        :param current_rate: Current buy rate.
+        :param current_profit: Current profit (as ratio), calculated based on current_rate.
+        :param min_stake: Minimal stake size allowed by exchange.
+        :param max_stake: Balance available for trading.
+        :param **kwargs: Ensure to keep this here so updates to this won't break your strategy.
+        :return float: Stake amount to adjust your trade
+        """
         
+        if trade.pair not in self.wallets._positions:
+            # do not adjust
+            return None
+
+        dataframe, _ = self.dp.get_analyzed_dataframe(pair=trade.pair, timeframe=self.timeframe)
+        current_candle = dataframe.iloc[-1].squeeze()
+        stake_amount = trade.stake_amount
+
+        if current_candle['riusbot_quantity']:
+            return -stake_amount + self.wallets.get_total_stake_amount() * current_candle['riusbot_quantity']
+        else:
+            return -stake_amount
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+
         pair = metadata["pair"].replace("/USDT", "")
         for i in self.my_trade[pair]:
             
@@ -413,6 +451,8 @@ class riusbot_hedge(IStrategy):
                 idx = dataframe.date.searchsorted(ts)
                 action = "enter_long" if i["action"] == "BUY" else "enter_short"
                 dataframe.loc[idx-1, action] = 1
+                dataframe.loc[idx-1, "exit_long"] = 0
+                dataframe.loc[idx-1, "exit_short"] = 0
 
                 if i["quantity"]:
                     dataframe.loc[idx-1, "riusbot_quantity"] = i["quantity"]
@@ -432,4 +472,61 @@ class riusbot_hedge(IStrategy):
         dataframe.loc[idx-1, "exit_long"] = 1
         dataframe.loc[idx-1, "exit_short"] = 1
         return dataframe
+    
+    def confirm_trade_entry(self, pair: str, order_type: str, amount: float, rate: float,
+                            time_in_force: str, current_time: datetime, entry_tag: Optional[str],
+                            side: str, **kwargs) -> bool:
+        """
+        Called right before placing a entry order.
+        Timing for this function is critical, so avoid doing heavy computations or
+        network requests in this method.
+
+        For full documentation please go to https://www.freqtrade.io/en/latest/strategy-advanced/
+
+        When not implemented by a strategy, returns True (always confirming).
+
+        :param pair: Pair that's about to be bought/shorted.
+        :param order_type: Order type (as configured in order_types). usually limit or market.
+        :param amount: Amount in target (base) currency that's going to be traded.
+        :param rate: Rate that's going to be used when using limit orders 
+                     or current rate for market orders.
+        :param time_in_force: Time in force. Defaults to GTC (Good-til-cancelled).
+        :param current_time: datetime object, containing the current datetime
+        :param entry_tag: Optional entry_tag (buy_tag) if provided with the buy signal.
+        :param side: 'long' or 'short' - indicating the direction of the proposed trade
+        :param **kwargs: Ensure to keep this here so updates to this won't break your strategy.
+        :return bool: When True is returned, then the buy-order is placed on the exchange.
+            False aborts the process
+        """
+        return True
+    
+    def confirm_trade_exit(self, pair: str, trade, order_type: str, amount: float,
+                           rate: float, time_in_force: str, exit_reason: str,
+                           current_time: datetime, **kwargs) -> bool:
+        """
+        Called right before placing a regular exit order.
+        Timing for this function is critical, so avoid doing heavy computations or
+        network requests in this method.
+
+        For full documentation please go to https://www.freqtrade.io/en/latest/strategy-advanced/
+
+        When not implemented by a strategy, returns True (always confirming).
+
+        :param pair: Pair for trade that's about to be exited.
+        :param trade: trade object.
+        :param order_type: Order type (as configured in order_types). usually limit or market.
+        :param amount: Amount in base currency.
+        :param rate: Rate that's going to be used when using limit orders
+                     or current rate for market orders.
+        :param time_in_force: Time in force. Defaults to GTC (Good-til-cancelled).
+        :param exit_reason: Exit reason.
+            Can be any of ['roi', 'stop_loss', 'stoploss_on_exchange', 'trailing_stop_loss',
+                           'exit_signal', 'force_exit', 'emergency_exit']
+        :param current_time: datetime object, containing the current datetime
+        :param **kwargs: Ensure to keep this here so updates to this won't break your strategy.
+        :return bool: When True, then the exit-order is placed on the exchange.
+            False aborts the process
+        """
+        
+        return True
     

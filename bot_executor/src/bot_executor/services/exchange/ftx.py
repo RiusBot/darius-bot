@@ -402,6 +402,7 @@ class FtxClient(Base):
 
     def clean_oco_order(self, sl_order: str, tp_order: str, symbol: str):
         symbol = self.make_symbol(symbol)
+
         open_conditional_order_list = []
         ftx_response = self.exchange.private_get_conditional_orders({'market': symbol})
         if ftx_response.get('success'):
@@ -409,38 +410,57 @@ class FtxClient(Base):
         else:
             logging.error(f"{ftx_response}")
 
-        tp_closed = True
-        sl_closed = True
+        history_conditional_order_list = []
+        ftx_response = self.exchange.private_get_conditional_orders_history({'market': symbol})
+        if ftx_response.get('success'):
+            history_conditional_order_list = ftx_response['result']
+        else:
+            logging.error(f"{ftx_response}")
+
+        tp_trigger = False
+        sl_trigger = False
+        tp_open = False
+        sl_open = False
 
         if tp_order:
+            for order in history_conditional_order_list:
+                if order['id'] == tp_order and order['status'] == 'triggered':
+                    tp_trigger = True
+                    break
+
             for order in open_conditional_order_list:
-                if order['id'] == tp_order:
-                    tp_closed = False
+                if order['id'] == tp_order and order['status'] == 'open':
+                    tp_open = True
                     break
 
         if sl_order:
-            for order in open_conditional_order_list:
-                if order['id'] == sl_order:
-                    sl_closed = False
+            for order in history_conditional_order_list:
+                if order['id'] == sl_order and order['status'] == 'triggered':
+                    sl_trigger = True
                     break
 
-        if tp_closed and not sl_closed:
+            for order in open_conditional_order_list:
+                if order['id'] == sl_order and order['status'] == 'open':
+                    sl_open = True
+                    break
+
+        if tp_trigger and sl_open:
             self.exchange.cancelOrder(sl_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
             return "TP"
-        
-        if not tp_closed and sl_closed:
+
+        if tp_open and sl_trigger:
             self.exchange.cancelOrder(tp_order, symbol, {'method': 'privateDeleteConditionalOrdersOrderId'})
             return "SL"
-        
-        if tp_closed and sl_closed:
+
+        if not tp_open and not sl_open:
             # require check for tp or sl
             return "closed"
 
         buy_position = self.get_position(symbol, 'BUY')
         sell_position = self.get_position(symbol, 'SELL')
         if (not buy_position) and (not sell_position):
-            if not sl_closed:
+            if not sl_trigger:
                 self.exchange.cancelOrder(sl_order, symbol)
-            if not tp_closed:
+            if not tp_trigger:
                 self.exchange.cancelOrder(tp_order, symbol)
             return "closed"
