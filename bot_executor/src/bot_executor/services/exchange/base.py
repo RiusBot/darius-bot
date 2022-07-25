@@ -54,22 +54,22 @@ class Base(ABC):
             elif required_notional > position_notional + 15:
                 self.close_all_orders(symbol=symbol)
                 self.quantity = (required_notional - position_notional) / self.leverage
-            elif position_notional > required_notional + 15:
-                try:
-                    self.close_all_orders(symbol=symbol)
-                    ratio = (position_notional - required_notional) / position_notional
-                    if self.target == "FUTURE":
-                        amount = position.get('contracts', 0)
-                    else:
-                        amount = position.get('amount', 0)
-                    self.close_position(symbol, action, amount=amount*ratio)
-                    self.config["scalp_quantity"] = 0
-                except Exception:
-                    logging.error("Scalp Quantity optimize error")
-                    logging.exception("")
-                    self.close_all_orders(symbol=symbol)
-                    self.close_position(symbol, action)
-                    self.quantity = scalp_quantity * total_balance
+            # elif position_notional > required_notional + 15:
+            #     try:
+            #         self.close_all_orders(symbol=symbol)
+            #         ratio = (position_notional - required_notional) / position_notional
+            #         if self.target == "FUTURE":
+            #             amount = position.get('contracts', 0)
+            #         else:
+            #             amount = position.get('amount', 0)
+            #         self.close_position(symbol, action, amount=amount*ratio)
+            #         self.config["scalp_quantity"] = 0
+            #     except Exception:
+            #         logging.error("Scalp Quantity optimize error")
+            #         logging.exception("")
+            #         self.close_all_orders(symbol=symbol)
+            #         self.close_position(symbol, action)
+            #         self.quantity = scalp_quantity * total_balance
             else:
                 self.close_all_orders(symbol=symbol)
                 self.close_position(symbol, action)
