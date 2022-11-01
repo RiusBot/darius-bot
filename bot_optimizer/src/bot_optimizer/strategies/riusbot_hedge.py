@@ -44,7 +44,8 @@ class riusbot_hedge(IStrategy):
     INTERFACE_VERSION = 3
 
     # Can this strategy go short?
-    can_short: bool = False
+    can_short: bool = True
+    max_leverage: float = 3
 
     # Optimal timeframe for the strategy.
     # timeframe = '1h'
@@ -52,12 +53,12 @@ class riusbot_hedge(IStrategy):
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
     minimal_roi = {
-        "0": 0.05
+        "0": 10.0
     }
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
-    stoploss = -0.05
+    stoploss = -1.0
 
     # Trailing stoploss
     trailing_stop = False
@@ -71,7 +72,7 @@ class riusbot_hedge(IStrategy):
     # These values can be overridden in the "ask_strategy" section in the config.
     use_exit_signal = True
     exit_profit_only = False
-    ignore_roi_if_entry_signal = False
+    ignore_roi_if_entry_signal = True
 
     # Number of candles the strategy requires before producing valid signals
     startup_candle_count: int = 10
@@ -113,6 +114,7 @@ class riusbot_hedge(IStrategy):
     }
     
     def __init__(self, *args, **kwargs):
+        self.cta = False
         self.my_trade = defaultdict(list)
         with open("config.json", "r") as f:
             config = json.load(f)
@@ -122,6 +124,8 @@ class riusbot_hedge(IStrategy):
                 symbol = trade["symbol"]
                 action = trade["action"]
                 quantity = abs(trade["quantity"]) if trade["quantity"] else 0
+                if quantity > 0:
+                    self.cta = True
                 timestamp = trade["message_timestamp"]
                 self.my_trade[symbol].append({
                     'action': action,
@@ -131,8 +135,8 @@ class riusbot_hedge(IStrategy):
 
             if config.get('riusbot_params'):
                 params = config["riusbot_params"]
-                self.minimal_roi = {"0": params['take_profit'] if params['take_profit'] != 0 else 1}
-                self.stoploss = -params['stop_loss'] if params['stop_loss'] != 0 else -0.5
+                self.minimal_roi = {"0": params['take_profit'] if params['take_profit'] != 0 else 10}
+                self.stoploss = -params['stop_loss'] if params['stop_loss'] != 0 else -1.0
                 logging.info(f"load riusbot params {json.dumps(params)}")
 
         super().__init__(*args, **kwargs)
@@ -168,7 +172,7 @@ class riusbot_hedge(IStrategy):
                             ("BTC/USDT", "15m"),
                             ]
         """
-        return []
+        return [("BTC/USDT", "1h")]
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -182,9 +186,13 @@ class riusbot_hedge(IStrategy):
         :return: a Dataframe with all mandatory indicators for the strategies
         """
 
+        inf_pair, inf_timeframe = self.informative_pairs()[0]
+        informative = self.dp.get_pair_dataframe(pair=inf_pair, timeframe=inf_timeframe)
+
         dataframe['riusbot_quantity'] = 0
-        dataframe["exit_long"] = 1
-        dataframe["exit_short"] = 1
+        if self.cta:
+            dataframe["exit_long"] = 1
+            dataframe["exit_short"] = 1
 
         # Momentum Indicators
         # ------------------------------------
@@ -229,7 +237,7 @@ class riusbot_hedge(IStrategy):
         # dataframe['cci'] = ta.CCI(dataframe)
 
         # RSI
-        # dataframe['rsi'] = ta.RSI(dataframe)
+        dataframe['rsi'] = ta.RSI(dataframe)
 
         # # Inverse Fisher transform on RSI: values [-1.0, 1.0] (https://goo.gl/2JGGoy)
         # rsi = 0.1 * (dataframe['rsi'] - 50)
@@ -302,9 +310,12 @@ class riusbot_hedge(IStrategy):
         # dataframe['ema3'] = ta.EMA(dataframe, timeperiod=3)
         # dataframe['ema5'] = ta.EMA(dataframe, timeperiod=5)
         # dataframe['ema10'] = ta.EMA(dataframe, timeperiod=10)
-        # dataframe['ema21'] = ta.EMA(dataframe, timeperiod=21)
-        # dataframe['ema50'] = ta.EMA(dataframe, timeperiod=50)
-        # dataframe['ema100'] = ta.EMA(dataframe, timeperiod=100)
+#         dataframe['ema21'] = ta.EMA(dataframe, timeperiod=21)
+#         dataframe['ema50'] = ta.EMA(dataframe, timeperiod=50)
+#         dataframe['ema100'] = ta.EMA(dataframe, timeperiod=100)
+#         informative['ema21'] = ta.EMA(informative, timeperiod=21)
+#         informative['ema50'] = ta.EMA(informative, timeperiod=50)
+#         informative['ema100'] = ta.EMA(informative, timeperiod=100)
 
         # # SMA - Simple Moving Average
         # dataframe['sma3'] = ta.SMA(dataframe, timeperiod=3)
@@ -394,6 +405,23 @@ class riusbot_hedge(IStrategy):
 
         return dataframe
 
+#     def leverage(self, pair: str, current_time: datetime, current_rate: float,
+#                  proposed_leverage: float, max_leverage: float, entry_tag: Optional[str], side: str,
+#                  **kwargs) -> float:
+#         """
+#         Customize leverage for each new trade. This method is only called in futures mode.
+
+#         :param pair: Pair that's currently analyzed
+#         :param current_time: datetime object, containing the current datetime
+#         :param current_rate: Rate, calculated based on pricing settings in exit_pricing.
+#         :param proposed_leverage: A leverage proposed by the bot.
+#         :param max_leverage: Max leverage allowed on this pair
+#         :param entry_tag: Optional entry_tag (buy_tag) if provided with the buy signal.
+#         :param side: 'long' or 'short' - indicating the direction of the proposed trade
+#         :return: A leverage amount, which is between 1.0 and max_leverage.
+#         """
+#         return 1
+
     def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
                             proposed_stake: float, min_stake: float, max_stake: float,
                             entry_tag: Optional[str], side: str, **kwargs) -> float:
@@ -402,14 +430,15 @@ class riusbot_hedge(IStrategy):
             # do not entry again
             return 0
         
+        leverage = 1 # float(current_candle['riusbot_quantity'] * self.leverage(pair, current_time, current_rate, 1, 3, None, None))
         dataframe, _ = self.dp.get_analyzed_dataframe(pair=pair, timeframe=self.timeframe)
         current_candle = dataframe.iloc[-1].squeeze()
 
         if current_candle['riusbot_quantity']:
-            return self.wallets.get_total_stake_amount() * current_candle['riusbot_quantity']
+            return self.wallets.get_total_stake_amount() * current_candle['riusbot_quantity'] * leverage
 
         # Use default stake amount.
-        return proposed_stake
+        return proposed_stake * leverage
     
     def adjust_trade_position(self, trade, current_time: datetime,
                               current_rate: float, current_profit: float, min_stake: Optional[float],
@@ -432,24 +461,31 @@ class riusbot_hedge(IStrategy):
             # do not adjust
             return None
 
+        leverage = 1  # float(self.leverage(trade.pair, current_time, current_rate, 1, 3, None, None))
         dataframe, _ = self.dp.get_analyzed_dataframe(pair=trade.pair, timeframe=self.timeframe)
         current_candle = dataframe.iloc[-1].squeeze()
-        stake_amount = trade.stake_amount
+        stake_amount = trade.stake_amount * leverage
 
         if current_candle['riusbot_quantity']:
-            return -stake_amount + self.wallets.get_total_stake_amount() * current_candle['riusbot_quantity']
+            return -stake_amount + self.wallets.get_total_stake_amount() * current_candle['riusbot_quantity'] * leverage
         else:
             return -stake_amount
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
 
         pair = metadata["pair"].replace("/USDT", "")
+        inf_pair, inf_timeframe = self.informative_pairs()[0]
+        informative = self.dp.get_pair_dataframe(pair=inf_pair, timeframe=inf_timeframe)
         for i in self.my_trade[pair]:
-            
+
             if i["action"] is not None:
                 ts = pd.Timestamp(i["timestamp"], unit='s').tz_localize('utc')
                 idx = dataframe.date.searchsorted(ts)
                 action = "enter_long" if i["action"] == "BUY" else "enter_short"
+
+                # if (informative.loc[idx-1, 'ema100'] < informative.loc[idx-2, 'ema100']) or (informative.loc[idx-2, 'ema100'] < informative.loc[idx-3, 'ema100']):
+                #     continue
+
                 dataframe.loc[idx-1, action] = 1
                 dataframe.loc[idx-1, "exit_long"] = 0
                 dataframe.loc[idx-1, "exit_short"] = 0
@@ -457,6 +493,10 @@ class riusbot_hedge(IStrategy):
                 if i["quantity"]:
                     dataframe.loc[idx-1, "riusbot_quantity"] = i["quantity"]
 
+        # dataframe.loc[
+        #     (dataframe['ema50'] < dataframe['ema100']) |
+        #     (dataframe['ema21'] < dataframe['ema50'])
+        # , 'enter_long'] = 0
         return dataframe
 
     

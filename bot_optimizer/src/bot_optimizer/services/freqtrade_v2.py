@@ -38,16 +38,7 @@ def read_message(
     if not message:
         raise Exception("Insufficient trade message")
 
-    exchange = getattr(ccxt, exchange)({})
-    exchange.loadMarkets()
-
-    pairs = []
-    for i in message:
-        symbol = f"{i['symbol']}/USDT"
-        if symbol in exchange.markets:
-            pairs.append(symbol)
-
-    exchange = ccxt.binance({
+    exchange = getattr(ccxt, exchange)({
         "enableRateLimit": True,
         'options': {
             "defaultType": 'future',
@@ -55,9 +46,17 @@ def read_message(
             "verbose": True,
         },
     })
+    exchange.loadMarkets()
+
+    pairs = ['BTC/USDT']
+    for i in message:
+        symbol = f"{i['symbol']}/USDT"
+        pairs.append(symbol)
+
     available_pairs = set(exchange.loadMarkets().keys())
-    rm_pairs = set(["OP/USDT"])
+    rm_pairs = set(["OP/USDT", "SPELL/USDT", "CVX/USDT", "LDO/USDT", "INJ/USDT", "1000LUNC/USDT", "LUNA2/USDT", "FOOTBALL/USDT", "STG/USDT", "QNT/USDT", "APT/USDT"])
     pairs = list((set(pairs) & available_pairs) - rm_pairs)
+    logging.info(f"Pairs {pairs}")
     return message, pairs
 
         
@@ -75,7 +74,7 @@ def freqtrade_init(
 
     message, pairs = read_message(db, channel, exchange, start_at, end_at)
     freqtrade_create_userdir()
-    freqtrade_create_config(params, message, pairs)
+    freqtrade_create_config(params, message, pairs, channel)
     freqtrade_download_data(exchange, timeframe, timerange)
     shutil.copyfile(riusbot_hedge.__file__, "user_data/strategies/riusbot_hedge.py")
 
@@ -88,10 +87,18 @@ def freqtrade_create_userdir():
     freqtrade_run(sysargv)
     
     
-def freqtrade_create_config(params, message, pairs):
+def freqtrade_create_config(params, message, pairs, channel):
+    dry_run_wallet_dict = {
+        'VEGAS': 3000,
+        'JUSTIN': 2000,
+        'ACDC': 500,
+        'MOON': 500,
+        'PERPETUAL': 1000
+    }
     logging.info("create config")
     config_path = os.path.join(config.__path__[0], "default_config_v2.json")
     freqtrade_config = json.load(open(config_path, "r"))
+    freqtrade_config["dry_run_wallet"] = dry_run_wallet_dict.get(channel, 1000)
     freqtrade_config["exchange"]["pair_whitelist"] = pairs
     freqtrade_config["riusbot_trades"] = message
     freqtrade_config["riusbot_params"] = params
@@ -133,7 +140,7 @@ def freqtrade_hyperopt_v2(db, json_payload: dict):
 
     exchange = json_payload.get('exchange', 'binance')
     timeframe = json_payload.get('timeframe', '1h')
-    days = json_payload.get('days', '90')
+    days = json_payload.get('days', 90)
     channel_list = json_payload.get('channels', get_channel(db))
     loss_list = json_payload.get('loss', config.Hyperopt_Loss)
     create = json_payload.get('create', True)
