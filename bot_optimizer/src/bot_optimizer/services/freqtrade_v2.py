@@ -10,6 +10,7 @@ from typing import Any, List
 from datetime import datetime, timedelta
 from collections import defaultdict
 from freqtrade.commands import Arguments
+from freqtrade.exceptions import OperationalException
 
 from bot_optimizer import config
 from bot_optimizer.strategies import riusbot_hedge
@@ -54,7 +55,7 @@ def read_message(
         pairs.append(symbol)
 
     available_pairs = set(exchange.loadMarkets().keys())
-    rm_pairs = set(["OP/USDT", "SPELL/USDT", "CVX/USDT", "LDO/USDT", "INJ/USDT", "1000LUNC/USDT", "LUNA2/USDT", "FOOTBALL/USDT", "STG/USDT", "QNT/USDT", "APT/USDT"])
+    rm_pairs = set(["OP/USDT", "SPELL/USDT", "CVX/USDT", "LDO/USDT", "INJ/USDT", "1000LUNC/USDT", "LUNA2/USDT", "FOOTBALL/USDT", "STG/USDT", "QNT/USDT", "APT/USDT", "MINA/USDT", "BLUEBIRD/USDT", "FET/USDT", "T/USDT", "RNDR/USDT", "MAGIC/USDT", "HOOK/USDT", "FXS/USDT", "PHB/USDT", "COCOS/USDT", "STX/USDT", "SSV/USDT", "GMX/USDT", "ASTR/USDT", "HIGH/USDT", "ACH/USDT", "AGIX/USDT", "CFX/USDT", "TRU/USDT", "CKB/USDT", "LQTY/USDT", 'BNX/USDT', ])#'ID/USDT', 'ARB/USDT', 'PERP/USDT'
     pairs = list((set(pairs) & available_pairs) - rm_pairs)
     logging.info(f"Pairs {pairs}")
     return message, pairs
@@ -68,11 +69,14 @@ def freqtrade_init(
     end_at: datetime,
     timeframe: str,
     timerange: str,
-    params: dict = {}
+    params: dict = {},
+    rm_pairs: list = None
 ):
     logging.info("freqtrade init")
 
     message, pairs = read_message(db, channel, exchange, start_at, end_at)
+    if rm_pairs is not None:
+        pairs = list(set(pairs) - set(rm_pairs))
     freqtrade_create_userdir()
     freqtrade_create_config(params, message, pairs, channel)
     freqtrade_download_data(exchange, timeframe, timerange)
@@ -93,7 +97,7 @@ def freqtrade_create_config(params, message, pairs, channel):
         'JUSTIN': 2000,
         'ACDC': 500,
         'MOON': 500,
-        'PERPETUAL': 1000
+        'PERPETUAL': 3000
     }
     logging.info("create config")
     config_path = os.path.join(config.__path__[0], "default_config_v2.json")
@@ -158,7 +162,7 @@ def freqtrade_hyperopt_v2(db, json_payload: dict):
             try:
                 params = {}
                 freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange)
-                sysargv = f"hyperopt --strategy riusbot_hedge --timeframe {timeframe} --timerange {timerange} --hyperopt-loss {loss} --spaces roi stoploss -e 20"
+                sysargv = f"hyperopt --strategy riusbot_hedge --timeframe {timeframe} --timerange {timerange} --hyperopt-loss {loss} --spaces roi stoploss -e 300"
                 freqtrade_run(sysargv)
 
                 with open("user_data/strategies/riusbot_hedge.json", "r") as f:
@@ -181,12 +185,63 @@ def freqtrade_hyperopt_v2(db, json_payload: dict):
                         end_at
                     )
                 output[channel][loss] = params
+            except OperationalException as e:
+                if 'no leverage tiers available' in str(e):
+                    err_msg = str(e)
+                    rm_pairs = [i.strip() for i in err_msg.split(' ', 1)[1].split('got')[0].strip().split(',')]
             except Exception as e:
                 if "Insufficient trade message" in str(e) or 'optimized config' in str(e):
                     logging.error(f"{channel} {start_at}-{end_at} {e}")
                 else:
                     logging.exception("")
     return output
+                     
+                     
+def retry(func):
+    def wrap(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except OperationalException as e:
+            if 'no leverage tiers available' in str(e):
+                err_msg = str(e)
+                rm_pairs = [i.strip() for i in err_msg.split(' ', 1)[1].split('got')[0].strip().split(',')]
+                kwargs['rm_pairs'] = rm_pairs
+                return func(*args, **kwargs)
+            else:
+                raise
+    return wrap
+
+
+@retry
+def _freqtrade_backtest_v2(db, exchange, channel, loss, start_at, end_at, timeframe, timerange, all_time, create, rm_pairs=None):
+    backtest_result = None
+    hyperopt = get_hyperopt(db, channel, loss, start_at)
+    params = json.loads(hyperopt.to_dict()['params'])
+    if all_time:
+        start_at = datetime.fromtimestamp(0)
+        timerange = f'20210101-{end_at.strftime("%Y%m%d")}'
+    freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange, params, rm_pairs)
+
+    sysargv = f"backtesting --strategy riusbot_hedge --timeframe {timeframe} --timerange {timerange} --eps"
+    freqtrade_run(sysargv)
+    with open("user_data/backtest_results/.last_result.json", "r") as f:
+        last_result_path = json.load(f)['latest_backtest']
+    with open(os.path.join("user_data/backtest_results", last_result_path), "r") as f:
+        backtest_result = json.load(f)
+
+    if all_time:
+        backtest_result = add_metrics_v2(backtest_result)
+
+    if create:
+        create_performance(
+            db,
+            start_at,
+            end_at,
+            json.dumps(backtest_result),
+            channel,
+            hyperopt
+        )
+    return backtest_result
 
 
 def freqtrade_backtest_v2(db, json_payload: dict):
@@ -210,39 +265,10 @@ def freqtrade_backtest_v2(db, json_payload: dict):
         os.remove("user_data/strategies/riusbot_hedge.json")
 
     for channel in channel_list:
-
         for loss in loss_list:  # config.Hyperopt_Loss:
-
             try:
-                backtest_result = None
-                hyperopt = get_hyperopt(db, channel, loss, start_at)
-                params = json.loads(hyperopt.to_dict()['params'])
-                if all_time:
-                    start_at = datetime.fromtimestamp(0)
-                    timerange = f'20210101-{end_at.strftime("%Y%m%d")}'
-                freqtrade_init(db, channel, exchange, start_at, end_at, timeframe, timerange, params)
-
-                sysargv = f"backtesting --strategy riusbot_hedge --timeframe {timeframe} --timerange {timerange} --eps"
-                freqtrade_run(sysargv)
-                with open("user_data/backtest_results/.last_result.json", "r") as f:
-                    last_result_path = json.load(f)['latest_backtest']
-                with open(os.path.join("user_data/backtest_results", last_result_path), "r") as f:
-                    backtest_result = json.load(f)
-
-                if all_time:
-                    backtest_result = add_metrics_v2(backtest_result)
-
-                if create:
-                    create_performance(
-                        db,
-                        start_at,
-                        end_at,
-                        json.dumps(backtest_result),
-                        channel,
-                        hyperopt
-                    )
+                backtest_result = _freqtrade_backtest_v2(db, exchange, channel, loss, start_at, end_at, timeframe, timerange, all_time, create)
                 output[channel][loss] = backtest_result
-
             except Exception as e:
                 if "Insufficient trade message" in str(e) or 'optimized config' in str(e):
                     logging.error(f"{channel} {start_at}-{end_at} {e}")

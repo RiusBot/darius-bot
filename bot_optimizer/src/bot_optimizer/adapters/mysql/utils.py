@@ -93,7 +93,7 @@ def get_message(db, channel: str, start_at: datetime, end_at: datetime):
     for message in Message.query.filter(
         Message.message_timestamp <= end_at,
         Message.message_timestamp >= start_at,
-        Message.channel == channel,
+        Message.channel.in_(["PERPETUAL", "VEGAS"]),
         Message.action.is_not(None),
         Message.symbol.is_not(None),
         Message.is_del.is_not(True),

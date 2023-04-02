@@ -135,9 +135,13 @@ class riusbot_hedge(IStrategy):
 
             if config.get('riusbot_params'):
                 params = config["riusbot_params"]
+                logging.info(f"load riusbot params {json.dumps(params)}")
                 self.minimal_roi = {"0": params['take_profit'] if params['take_profit'] != 0 else 10}
                 self.stoploss = -params['stop_loss'] if params['stop_loss'] != 0 else -1.0
-                logging.info(f"load riusbot params {json.dumps(params)}")
+                
+                self.stoploss = -0.166
+                self.minimal_roi = {"0": 0.32}
+                logging.info(f"minimal_roi:{self.minimal_roi}, stoploss:{self.stoploss}")
 
         super().__init__(*args, **kwargs)
 
@@ -425,6 +429,7 @@ class riusbot_hedge(IStrategy):
     def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
                             proposed_stake: float, min_stake: float, max_stake: float,
                             entry_tag: Optional[str], side: str, **kwargs) -> float:
+        # Returning 0 or None will prevent trades from being placed.
 
         if pair in self.wallets._positions:
             # do not entry again
