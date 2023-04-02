@@ -454,12 +454,14 @@ class OkxClient(Base):
                 if order["algoId"] == tp_order:
                     tp_order_info = order
                     tp_order_info['status'] = "open"
+                tp_order_info['instId'] = order["instId"]
 
         if sl_order:
             for order in open_orders:
                 if order["algoId"] == sl_order:
                     sl_order_info = order
                     sl_order_info['status'] = "open"
+                sl_order_info['instId'] = order["instId"]
 
         if tp_order_info["status"] == "closed" and sl_order_info["status"] == "open":
             self.exchange.private_post_trade_cancel_algos(params=[{'instId': tp_order_info['instId'], 'algoId': sl_order}])

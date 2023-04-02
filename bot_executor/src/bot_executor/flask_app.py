@@ -43,7 +43,7 @@ def main():
         order_info.pop('token', None)
         logging.error(f"Order info: {order_info}")
         logging.error(repr(e))
-        # traceback.format_exc()
+        logging.error(traceback.format_exc())
         return jsonify({"error_message": repr(e)}), 500
     except Exception as e:
         logging.exception("")

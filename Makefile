@@ -123,9 +123,9 @@ uninstall:
 	pipenv --rm
 
 clean:
-	find . -name "*.py[co]" -delete
-	find . -name "*~" -delete
-	find . -name "__pycache__" -delete
+	@find . -name "*.py[co]" -delete
+	@find . -name "*~" -delete
+	@find . -name "__pycache__" -delete
 	@find . -name ".ipynb*" -exec rm -rv {} +
 
 shell:
@@ -156,7 +156,7 @@ start-optimizer-local:
 			--bind :8000 \
 			--workers 1 \
 			--threads 1 \
-			--timeout 3600
+			--timeout 10800
 
 
 
@@ -174,10 +174,12 @@ build-bot-executor: set-project
 
 deploy-bot-executor: set-project
 	gcloud beta run deploy bot-executor \
-			--image gcr.io/$(PROJECT_ID)/bot-executor \
-			--region us-central1 \
+			--image gcr.io/$(PROJECT_ID)/bot-executor:test \
+			--region asia-east1 \
 			--platform managed \
 			--cpu 1 \
+			--vpc-connector projects/darius-332003/locations/asia-east1/connectors/my-connector \
+			--vpc-egress all-traffic \
 			--concurrency 1 \
 			--timeout 30s \
 			--memory 1Gi \
